@@ -38,6 +38,9 @@ if [ ! -e "$HOME/.config/herdr/plugins.json" ]; then
 fi
 
 # omp models.yml：模板制，密钥手填（真文件永不入库）
+if [ -L "$HOME/.omp/agent/models.yml" ] && [ ! -e "$HOME/.omp/agent/models.yml" ]; then
+  rm "$HOME/.omp/agent/models.yml"
+fi
 if [ ! -e "$HOME/.omp/agent/models.yml" ]; then
   mkdir -p "$HOME/.omp/agent"
   cp "$DOTFILES/mac/omp/agent/models.yml.example" "$HOME/.omp/agent/models.yml"
