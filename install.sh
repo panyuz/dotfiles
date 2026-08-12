@@ -22,7 +22,8 @@ link "$DOTFILES/mac/omp/agent/config.yml"    "$HOME/.omp/agent/config.yml"
 link "$DOTFILES/mac/omp/agent/APPEND_SYSTEM.md" "$HOME/.omp/agent/APPEND_SYSTEM.md"
 
 # omp 全局 skill：目录级 symlink（新增 reference 文件自动生效，零维护）
-link "$DOTFILES/mac/omp/skills/herdr"        "$HOME/.omp/skills/herdr"
+# 用户级扫描目录 = ~/.omp/agent/skills/（非 ~/.omp/skills/，2026-08-12 源码核实）
+link "$DOTFILES/mac/omp/skills/herdr"        "$HOME/.omp/agent/skills/herdr"
 
 # herdr plugins.json：不纳管（插件管理器回写的状态文件，本机自维护）
 
