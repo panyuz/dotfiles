@@ -24,18 +24,7 @@ link "$DOTFILES/mac/omp/agent/APPEND_SYSTEM.md" "$HOME/.omp/agent/APPEND_SYSTEM.
 # omp 全局 skill：目录级 symlink（新增 reference 文件自动生效，零维护）
 link "$DOTFILES/mac/omp/skills/herdr"        "$HOME/.omp/skills/herdr"
 
-# herdr plugins.json：快照恢复（不 symlink——herdr 插件管理器会回写此文件，避免仓库噪声 diff）
-# 仅当本机不存在时恢复，并把写死的路径改写为本机 $HOME
-# 先清悬空 symlink（-e 对悬空链接为 false，直接重定向会跟随链接写错位置）
-if [ -L "$HOME/.config/herdr/plugins.json" ] && [ ! -e "$HOME/.config/herdr/plugins.json" ]; then
-  rm "$HOME/.config/herdr/plugins.json"
-fi
-if [ ! -e "$HOME/.config/herdr/plugins.json" ]; then
-  mkdir -p "$HOME/.config/herdr"
-  sed "s|/Users/panyu|$HOME|g" "$DOTFILES/mac/herdr/plugins.json" \
-    > "$HOME/.config/herdr/plugins.json"
-  echo "📋 plugins.json 已从快照恢复（插件本体需 herdr 重装，恢复仅作种子）"
-fi
+# herdr plugins.json：不纳管（插件管理器回写的状态文件，本机自维护）
 
 # omp models.yml：模板制，密钥手填（真文件永不入库）
 if [ -L "$HOME/.omp/agent/models.yml" ] && [ ! -e "$HOME/.omp/agent/models.yml" ]; then
