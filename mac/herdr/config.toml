@@ -1,0 +1,156 @@
+# herdr config — Ghostty + OMP on macOS
+# ~/.config/herdr/config.toml
+
+onboarding = false
+
+# ── Theme ──────────────────────────────────────────────
+[theme]
+name        = "catppuccin"
+auto_switch = true
+light_name  = "catppuccin-latte"
+dark_name   = "catppuccin"
+
+# ── Terminal ───────────────────────────────────────────
+[terminal]
+default_shell = "zsh"
+shell_mode     = "auto"       # login shell on macOS
+new_cwd        = "follow"     # inherit from source pane
+
+# ── Keys — prefix-first, tmux-alike ────────────────────
+[keys]
+prefix = "ctrl+a"              # tmux muscle memory
+
+# Workspace / tab
+new_workspace       = "prefix+shift+n"
+workspace_picker    = "prefix+w"
+close_workspace     = "prefix+shift+d"
+new_tab             = "prefix+c"
+close_tab           = "prefix+shift+x"
+rename_tab          = "prefix+shift+t"
+next_tab            = "prefix+n"
+previous_tab        = "prefix+p"
+switch_tab          = "prefix+1..9"
+switch_workspace    = "prefix+shift+1..9"
+
+# Pane
+split_vertical      = "prefix+v"
+split_horizontal    = "prefix+minus"
+close_pane          = "prefix+x"
+zoom                = "prefix+z"
+focus_pane_left     = "prefix+h"
+focus_pane_down     = "prefix+j"
+focus_pane_up       = "prefix+k"
+focus_pane_right    = "prefix+l"
+cycle_pane_next     = "prefix+tab"
+last_pane           = "prefix+o"
+resize_mode         = "prefix+r"
+
+# Agent focus
+focus_agent         = "prefix+alt+1..9"
+next_agent          = "prefix+]"
+previous_agent      = "prefix+["
+
+# Navigate mode (vim-like)
+navigate_pane_left  = "h"
+navigate_pane_down  = "j"
+navigate_pane_up    = "k"
+navigate_pane_right = "l"
+
+# Meta
+help                = "prefix+?"
+settings            = "prefix+s"
+detach              = "prefix+q"
+reload_config       = "prefix+shift+r"
+toggle_sidebar      = "prefix+b"
+edit_scrollback     = "prefix+e"
+goto                = "prefix+g"
+
+# ── Custom popup ───────────────────────────────────────
+[[keys.command]]
+key         = "prefix+alt+g"
+type        = "popup"
+command     = "lazygit"
+description = "lazygit"
+width       = "90%"
+height      = "90%"
+
+# ── OMP Agent jump (C-s opens new tab with OMP) ────────
+[[keys.command]]
+key         = "prefix+ctrl+s"
+type        = "pane"
+command     = "omp --cwd=${HERDR_PANE_CWD:-$HOME}"
+description = "New OMP pane"
+
+# ── UI ─────────────────────────────────────────────────
+[ui]
+sidebar_start_collapsed = false
+sidebar_collapsed_mode  = "compact"
+pane_borders            = true
+pane_gaps               = true
+mouse_capture           = true
+copy_on_select          = true
+confirm_close           = true
+accent                  = "#89b4fa"   # catppuccin blue
+
+# Agent sidebar: compact display
+agent_panel_sort = "spaces"
+show_agent_labels_on_pane_borders = true
+[ui.sidebar.agents]
+row_gap = 0
+rows = [
+  ["state_icon", "state_text", "workspace", "tab"],
+  ["agent"],
+]
+
+# Per-agent custom rows
+[ui.sidebar.agents.rows_by_agent]
+omp = [
+  ["state_icon", "state_text", "workspace"],
+  ["terminal_title_stripped"],
+  ["agent"],
+]
+
+# Workspace sidebar
+[ui.sidebar.spaces]
+row_gap = 0
+rows = [
+  ["state_icon", "state_text", "workspace"],
+  ["branch", "git_status"],
+]
+
+# ── Notifications ──────────────────────────────────────
+[ui.toast]
+delivery = "herdr"
+
+[ui.toast.herdr]
+position = "bottom-right"
+
+[ui.toast.clipboard]
+enabled  = true
+position = "bottom-center"
+
+# ── Sound ──────────────────────────────────────────────
+[ui.sound]
+enabled = true
+
+
+# ── Session ────────────────────────────────────────────
+[session]
+resume_agents_on_restore = true
+
+# ── Remote ─────────────────────────────────────────────
+[remote]
+manage_ssh_config = true
+
+# ── macOS CJK IME fixes ────────────────────────────────
+[experimental]
+switch_ascii_input_source_in_prefix = true
+reveal_hidden_cursor_for_cjk_ime   = true
+cjk_ime_agents = ["omp", "pi", "kimi", "claude"]
+kitty_graphics = true
+
+# ── Updates ────────────────────────────────────────────
+[update]
+channel       = "stable"
+version_check = true
+manifest_check = true

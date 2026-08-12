@@ -1,0 +1,8 @@
+.DS_Store
+*.log
+*.sock
+session.json
+release-notes.json
+.plugins.lock
+**/models.yml
+!**/models.yml.example

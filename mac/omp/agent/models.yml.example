@@ -1,0 +1,17 @@
+providers:
+  siliconflow:
+    baseUrl: https://api.siliconflow.cn/v1
+    apiKey: "REPLACE_ME"
+    api: openai-completions
+    models:
+      - id: Qwen/Qwen3-VL-32B-Instruct
+        name: Qwen3-VL 32B (SiliconFlow)
+        reasoning: false
+        input: [text, image]
+        cost:
+          input: 0
+          output: 0
+          cacheRead: 0
+          cacheWrite: 0
+        contextWindow: 131072
+        maxTokens: 8192

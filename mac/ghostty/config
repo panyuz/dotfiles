@@ -1,0 +1,45 @@
+# Ghostty config — macOS + Herdr + OMP
+# Path: ~/.config/ghostty/config
+
+# Font
+font-family      = JetBrainsMono Nerd Font
+font-size        = 13
+font-thicken     = true
+font-feature     = calt
+
+# Theme — Catppuccin, follows macOS light/dark
+theme            = catppuccin
+background-opacity = 0.92
+background-blur    = 20
+
+# Window
+window-padding-x = 8
+window-padding-y = 4
+window-theme     = auto
+macos-titlebar-style = tabs
+
+# Cursor
+cursor-style     = bar
+cursor-style-blink = true
+
+# Scrollback
+scrollback-limit = 100000000
+scrollbar        = never
+
+# Mouse
+mouse-hide-while-typing = true
+
+# Keybinds — font size
+keybind = ctrl+equal=increase_font_size:1
+keybind = ctrl+minus=decrease_font_size:1
+keybind = ctrl+0=reset_font_size
+
+# Quick terminal (Quake-style drop-down)
+keybind = global:ctrl+grave_accent=toggle_quick_terminal
+quick-terminal-position = top
+quick-terminal-size     = 40%
+
+# Pane splits (Ghostty native, not Herdr)
+keybind = ctrl+shift+d=new_split:right
+keybind = ctrl+shift+down=new_split:down
+keybind = ctrl+shift+w=close_surface
