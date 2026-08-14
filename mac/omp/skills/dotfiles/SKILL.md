@@ -1,6 +1,7 @@
 ---
 name: dotfiles
 description: "管理 ~/Documents/github/dotfiles 仓库：macOS 全局配置（ghostty/herdr/omp 及全局 skill）的 git 真源。当用户要求修改全局配置、新增/修改全局 skill、部署/同步 dotfiles、换机恢复环境时使用。"
+hide: true
 ---
 
 # dotfiles 仓库管理
