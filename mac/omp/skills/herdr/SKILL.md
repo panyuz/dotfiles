@@ -274,5 +274,6 @@ daemon 由插件自动管理（state：`~/.local/state/herdr/plugins/official.br
 ## References
 
 - `references/kimi-code-interaction.md` — kimi code 交互实战：`agent prompt` 反复 `agent_prompt_stalled`（paste 后 Enter 不提交）的根因与修复流程（prompt 后补 `send-keys enter`）。与 kimi kind 交互前必读。
-- `references/agy-interaction.md` — agy（Antigravity CLI）交互实战：账号资格验证卡死与重启修复、prompt 流程、`--dangerously-skip-permissions`。与 agy kind 交互前必读。
+- `references/agy-interaction.md` — agy（Antigravity CLI）交互实战：账号资格验证卡死与重启修复、prompt 流程、`--dangerously-skip-permissions`、发送通道陷阱（`pane run` 勿用于 TUI）。与 agy kind 交互前必读。
+- `references/mcp-config.md` — MCP 项目级配置实战（2026-08-16）：agy 用 `.agents/mcp_config.json`（`serverUrl`），kimi code 用 `.kimi-code/mcp.json`（`url`），beaver-zotero 实例、重启生效、`/mcp` 与 `kimi -p` 验证法。给 pane 内 agent 装 MCP 前必读。
 

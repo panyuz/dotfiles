@@ -45,3 +45,10 @@ herdr agent read <name> --source recent-unwrapped --lines 10   # 最近输出：
 - 退出时界面显示恢复命令：`kimi -r session_<id>`（先 `agent read --source visible` 记下 session id）
 - 长输出（swarm 子代理模式）：`recent-unwrapped` 只能读到 alternate screen 外的可见部分（出现 `ctrl+o to expand` 提示）——分多段读或让 agent 把完整回复写入临时文件再 read
 - 每轮 `prompt --wait` 12-15s 超时返回 timeout 错误属正常（文本已发出，补 enter 即提交），非失败；等待完成用 `agent wait --timeout 300000`（实测 90-280s）
+
+## 2026-08-16 补充：MCP 项目级配置与验证
+
+- **项目级配置**：工作区根目录 `.kimi-code/mcp.json`（用户级 `~/.kimi-code/mcp.json`；同名条目项目级优先）；HTTP 服务器用 `url` 字段（无 `transport`），stdio 用 `command`/`args`；官方文档 https://moonshotai.github.io/kimi-code/en/customization/mcp.html
+- **信任要求**：项目级 MCP 需工作区受信（`~/.kimi-code/workspace-trust/` 有对应 `wd_*` 条目；启动时弹信任提示选 Trust this folder）；已受信目录无需再操作
+- **验证命令**：`cd <项目根> && kimi -p "只回答一句话：你当前有哪些 MCP 服务器可用？列出服务器名和工具名。"`（单发模式 ~6s 返回，输出含服务器名与完整工具列表）；⚠️ `-p` 与 `-y` 不能组合（`error: Cannot combine --prompt with --yolo`）
+- beaver-zotero 实例配置与对照：见 `references/mcp-config.md`

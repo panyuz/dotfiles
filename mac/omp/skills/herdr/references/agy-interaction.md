@@ -54,3 +54,20 @@ herdr agent read <name> --source recent-unwrapped --lines 100   # 读全文
 - 任务中读文件会显示 `● Read(/abs/path)` 步骤行（8 个文件并行读，~5s）。
 - 会话恢复：`--continue`（最近会话）/ `--conversation <id>`；单发模式：`-p/--print`。
 - 未验证：`--model` 切换、`--sandbox`、`agent` 子命令列表——需要时查 `agy --help`。
+
+## 2026-08-16 补充：发送通道选择（大坑实测）
+
+**`herdr pane run` 对 TUI 交互程序不可用**：若 pane 前台不是 agent（agy 已退出、shell 在提示符），`pane run <pane> "$(cat prompt.md)"` 会把整段 prompt **当 shell 命令逐行执行**（`command not found`、`no matches found` 刷屏），且无回滚。发 prompt 前必须确认 pane 前台是 agent（`agent list` 有该 agent 且状态非 unknown；或 `pane read --source visible` 能看到 agent 的 `>` 提示符）。
+
+正确通道：
+
+- **agent 已由 `herdr agent start` 托管** → `herdr agent prompt` + 补 enter（见上）
+- **agent 未托管/非标准** → `herdr pane send-text <pane> "<文本>"` + `herdr pane send-keys <pane> enter`（send-text 发字面文本，enter 用 send-keys 补）
+- **`herdr agent send-keys` 只接受逻辑按键**（esc/ctrl+c/enter 等），传 `"/mcp"` 之类文本报 `invalid_key`——发斜杠命令用 send-text
+
+## 2026-08-16 补充：MCP 配置与写作任务实测
+
+- MCP 配置（全局/项目级/验证）：见 `references/mcp-config.md`
+- agy 写作类任务实测：prompt 发出后 `--wait 20s` 超时属正常 → 补 enter → `agent wait --timeout 900000`，83s 完成（读 2 个必读材料 + 11 次 beaver-zotero 检索 + 3 次 WebSearch + 写作 + 自检）
+- MCP 工具调用在输出中显示为 `● beaver-zotero/search_by_metadata(...)` 步骤行——核查 agent 是否真用了 MCP 看这里
+- 任务要求"不读某些文件"时，从工具记录（Read 步骤行）即可验证遵守情况
