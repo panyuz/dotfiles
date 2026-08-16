@@ -29,7 +29,7 @@ theme:
   light: light
 setupVersion: 1
 modelRoles: 
-  default: deepseek/deepseek-v4-flash:max
+  default: deepseek/deepseek-v4-pro:max
   vision: siliconflow/Qwen/Qwen3-VL-32B-Instruct
   smol: deepseek/deepseek-v4-flash:max
   designer: vercel-ai-gateway/xai/grok-4.5
