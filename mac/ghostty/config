@@ -24,7 +24,8 @@ window-padding-x = 12
 window-padding-y = 8
 macos-titlebar-style = tabs
 window-save-state = always
-confirm-close-surface = false  # herdr 场景安全：关窗口=client 脱离，server/pane 常驻；Cmd+W 秒关窗口是预期行为
+# herdr 场景安全：关窗口=client 脱离，server/pane 常驻；Cmd+W 秒关窗口是预期行为
+confirm-close-surface = false
 
 # ── 光标（实心不闪烁，减少眼部刺激）──
 cursor-style     = bar
