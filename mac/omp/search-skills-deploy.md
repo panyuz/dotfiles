@@ -155,6 +155,15 @@ byted-web-search/
 - 路径：`/Users/panyu/Library/CloudStorage/OneDrive-个人/100Archive/100dataapp/pass/apienv/envapi.kdbx`
 - keyfile：`/Users/panyu/Library/CloudStorage/OneDrive-个人/100Archive/100dataapp/pass/apienv/envapi.key`
 - 条目：`anysearch`（`ANYSEARCH_API_KEY`）、`byted-web-search`（`WEB_SEARCH_API_KEY`）
-- 本机 `.env` 从该库复制，作为 skill 运行时的实际密钥（不入 git）
+- 数据库为 **keyfile-only**（`--no-password --key-file`），KDBX 4 格式（keepassxc-cli 2.7.12 原生支持）
 
-> 换机时从 kdbx 导出 key 写入各 skill 目录 `.env`，不依赖 git 存密钥。
+### 动态取 key（无需明文）
+
+两个 skill 的脚本已内置 KDBX fallback：`.env`/环境变量未提供 key 时，直接用 keepassxc-cli 绝对路径从 kdbx 读取条目 Password，注入环境变量。**不落明文 `.env`**。
+
+- keepassxc-cli：`/Applications/KeePassXC.app/Contents/MacOS/keepassxc-cli`
+- 读取命令：`<cli> show --no-password --key-file <keyfile> -s <db> <entry>`，解析 `Password:` 行
+- anysearch（Node，用项目内 bun 运行）：`loadKeyFromKdbx()` 在 `anysearch_cli.js`
+- byted（Python）：`_get_api_key()` 在 `web_search.py`
+
+> 换机时改两个脚本内的 `KEEPASSXC_CLI` / `KDBX` / `KDBX_KEYFILE` 绝对路径，key 仍由 kdbx 提供，不依赖 git 存密钥。
