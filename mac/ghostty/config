@@ -10,7 +10,8 @@ adjust-cell-height = 0
 font-feature     = calt
 
 # ── 主题：Rose Pine（软暗色护眼，固定暗色不随系统切亮；与 herdr 同步）──
-theme            = rose-pine
+# 注：window-theme=auto 只影响 macOS 标题栏亮暗，终端配色固定
+theme            = "Rose Pine"
 background-opacity = 0.9
 background-blur    = 20
 window-theme     = auto
@@ -47,8 +48,6 @@ keybind = global:ctrl+grave_accent=toggle_quick_terminal
 quick-terminal-position = top
 quick-terminal-size     = 40%
 
-# 关闭窗口
-keybind = ctrl+shift+w=close_surface
-
 # 注意：不再绑定 Ghostty 原生分屏（new_split）——分屏由 herdr 管理
 # （prefix+v / prefix+- 或直连 ctrl+alt+d），原生分屏会在 herdr 内再套一层，布局混乱
+# 也不绑定 close_surface 类键（herdr 会话关窗口用 Cmd+W，防误触整窗关闭）

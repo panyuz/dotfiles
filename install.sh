@@ -18,8 +18,8 @@ link() { # link <repo内真源> <目标路径>
 # ghostty / herdr / omp agent 配置（文件级 symlink）
 link "$DOTFILES/mac/ghostty/config"          "$HOME/.config/ghostty/config"
 link "$DOTFILES/mac/herdr/config.toml"       "$HOME/.config/herdr/config.toml"
-link "$DOTFILES/mac/omp/agent/config.yml"    "$HOME/.omp/agent/config.yml"
 link "$DOTFILES/mac/omp/agent/APPEND_SYSTEM.md" "$HOME/.omp/agent/APPEND_SYSTEM.md"
+# omp config.yml 真身在 ~/.omp/agent/config.yml（本机自维护，不入库，2026-08-21 起）
 
 # omp 全局 skill：目录级 symlink 自动循环（新增 skill 零配置，下次跑 install.sh 自动纳入）
 # 用户级扫描目录 = ~/.omp/agent/skills/（非 ~/.omp/skills/，2026-08-12 源码核实）
@@ -30,14 +30,9 @@ done
 
 # herdr plugins.json：不纳管（插件管理器回写的状态文件，本机自维护）
 
-# omp models.yml：模板制，密钥手填（真文件永不入库）
+# omp models.yml：含密钥，真身本机自维护，永不入库（模板已移除 2026-08-21）
 if [ -L "$HOME/.omp/agent/models.yml" ] && [ ! -e "$HOME/.omp/agent/models.yml" ]; then
   rm "$HOME/.omp/agent/models.yml"
-fi
-if [ ! -e "$HOME/.omp/agent/models.yml" ]; then
-  mkdir -p "$HOME/.omp/agent"
-  cp "$DOTFILES/mac/omp/agent/models.yml.example" "$HOME/.omp/agent/models.yml"
-  echo "🔑 models.yml 已从模板生成，请编辑填入真实 apiKey: $HOME/.omp/agent/models.yml"
 fi
 
 echo "🎉 dotfiles 部署完成"

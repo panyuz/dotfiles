@@ -7,7 +7,7 @@ hide: true
 # dotfiles 仓库管理
 
 > 真源：`~/Documents/github/dotfiles`（远程 `git@github.com:panyuz/dotfiles.git`，分支 main）
-> 部署位置：`~/.config/*`、`~/.omp/agent/*` 均为 **symlink** 指向仓库（除 plugins.json/models.yml 特殊处理）
+> 部署位置：`~/.config/*`、`~/.omp/agent/*` 均为 **symlink** 指向仓库（除 plugins.json 与含密钥/运行时文件本机自维护）
 
 ## 仓库结构
 
@@ -17,9 +17,7 @@ dotfiles/
 │   ├── ghostty/config        # 终端外观/字体/快捷键（symlink 到 ~/.config/ghostty/config）
 │   ├── herdr/config.toml     # herdr 主题/快捷键（symlink 到 ~/.config/herdr/config.toml）
 │   └── omp/
-│       ├── agent/config.yml        # omp 配置（symlink 到 ~/.omp/agent/config.yml）
 │       ├── agent/APPEND_SYSTEM.md  # omp 系统提示（symlink）
-│       ├── agent/models.yml.example # 模板；真文件永不入库（含密钥）
 │       └── skills/<name>/          # 全局 skill 真源（目录级 symlink 到 ~/.omp/agent/skills/<name>）
 ├── win/                       # Windows 占位（install.ps1）
 ├── shared/                    # 跨平台配置占位
@@ -28,13 +26,16 @@ dotfiles/
 └── .gitignore                 # 排除 *.log/*.sock/session.json/release-notes.json/.plugins.lock/**/models.yml
 ```
 
+> **2026-08-21 规则**：omp 等 agent 仅纳管**文本文件**（mcp/skills/append/prompt）；
+> `config.yml`、`models.yml` 等本机自维护（真身在 `~/.omp/agent/`，不入库）。
+
 ## 关键机制（源码核实的硬事实）
 
 - **omp 用户级 skill 扫描目录 = `~/.omp/agent/skills/`**（不是 `~/.omp/skills/`！2026-08-12 源码核实 builtin.ts）。symlink 目录被支持（`isDirectory() || isSymbolicLink()` 均放行）。
 - **skill 发现是自动目录扫描**：放对目录即自动注册，config.yml 无需任何声明/注册。
 - **omp 加载时机 = 会话启动**：新增/修改 skill 后需**重启 omp 会话**才生效（当前会话有启动时缓存）。
 - herdr 的 `plugins.json` 是插件管理器回写状态文件（含本机绝对路径）——**不纳管**，留在 `~/.config/herdr/plugins.json` 本机自维护。
-- `~/.omp/agent/models.yml` 含明文 API key——**永不入库**，库内仅 `models.yml.example`（apiKey 占位 REPLACE_ME）。
+- `~/.omp/agent/config.yml`、`~/.omp/agent/models.yml` 本机自维护（可能含密钥/本机偏好）——**不入库**。
 
 ## 日常操作
 
@@ -70,7 +71,7 @@ cd ~/Documents/github/dotfiles && git add -A && git commit -m "skill: 新增 <na
 
 ```bash
 git clone git@github.com:panyuz/dotfiles.git && cd dotfiles && ./install.sh
-# 然后手动补：~/.omp/agent/models.yml 填真实 apiKey（从模板复制）
+# 然后手动补：~/.omp/agent/config.yml、models.yml 等本机文件（从旧机拷贝）
 # herdr 插件需重新安装（plugins.json 本机自维护）
 ```
 

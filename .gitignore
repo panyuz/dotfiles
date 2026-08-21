@@ -5,7 +5,6 @@ session.json
 release-notes.json
 .plugins.lock
 **/models.yml
-!**/models.yml.example
 
 # omp 配置锁（运行时产物）
 config.yml.lock
