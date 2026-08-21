@@ -1,54 +1,57 @@
-# herdr config — Ghostty + OMP on macOS
+# herdr config — Ghostty + OMP on macOS（2026-08-21 优化）
 # ~/.config/herdr/config.toml
 
 onboarding = false
 
-# ── Theme ──────────────────────────────────────────────
+# ── Theme：跟随 Ghostty 深浅色（与 ghostty theme=auto 同步）──
 [theme]
-name = "tokyo-night"
-auto_switch = false
-light_name  = "catppuccin-latte"
-dark_name   = "catppuccin"
+name         = "catppuccin"
+auto_switch  = true
+light_name   = "catppuccin-latte"
+dark_name    = "catppuccin"
 
 # ── Terminal ───────────────────────────────────────────
 [terminal]
 default_shell = "zsh"
-shell_mode     = "auto"       # login shell on macOS
-new_cwd        = "follow"     # inherit from source pane
+shell_mode    = "auto"       # login shell on macOS
+new_cwd       = "follow"     # inherit from source pane
 
 # ── Keys — prefix-first, tmux-alike ────────────────────
 [keys]
 prefix = "ctrl+a"              # tmux muscle memory
 
+# 直连键（无 prefix）采用 herdr 官方推荐的 ctrl+alt 家族：不被系统/终端/应用占用
 # Workspace / tab
 new_workspace       = "prefix+shift+n"
 workspace_picker    = "prefix+w"
 close_workspace     = "prefix+shift+d"
-new_tab             = "prefix+c"
+new_tab             = ["prefix+c", "ctrl+alt+c"]
 close_tab           = "prefix+shift+x"
 rename_tab          = "prefix+shift+t"
-next_tab            = "prefix+n"
-previous_tab        = "prefix+p"
+next_tab            = ["prefix+n", "ctrl+alt+]"]
+previous_tab        = ["prefix+p", "ctrl+alt+["]
 switch_tab          = "prefix+1..9"
 switch_workspace    = "prefix+shift+1..9"
 
 # Pane
-split_vertical      = "prefix+v"
-split_horizontal    = "prefix+minus"
+split_vertical      = ["prefix+v", "ctrl+alt+d"]
+split_horizontal    = ["prefix+minus", "ctrl+alt+shift+d"]
 close_pane          = "prefix+x"
-zoom                = "prefix+z"
-focus_pane_left     = "prefix+h"
-focus_pane_down     = "prefix+j"
-focus_pane_up       = "prefix+k"
-focus_pane_right    = "prefix+l"
+zoom                = ["prefix+z", "ctrl+alt+z"]
+focus_pane_left     = ["prefix+h", "ctrl+alt+h"]
+focus_pane_down     = ["prefix+j", "ctrl+alt+j"]
+focus_pane_up       = ["prefix+k", "ctrl+alt+k"]
+focus_pane_right    = ["prefix+l", "ctrl+alt+l"]
 cycle_pane_next     = "prefix+tab"
 last_pane           = "prefix+o"
 resize_mode         = "prefix+r"
+# 默认 open_notification_target 占 prefix+o，已让位给 last_pane（空串=禁用）
+open_notification_target = ""
 
-# Agent focus
+# Agent focus（option-as-alt 开启后 alt 组合键才能送达）
 focus_agent         = "prefix+alt+1..9"
-next_agent          = "prefix+]"
-previous_agent      = "prefix+["
+next_agent          = "prefix+alt+]"
+previous_agent      = "prefix+alt+["   # prefix+[ 恢复为 herdr 复制模式（原默认）
 
 # Navigate mode (vim-like)
 navigate_pane_left  = "h"
@@ -74,11 +77,13 @@ description = "lazygit"
 width       = "90%"
 height      = "90%"
 
-# ── OMP Agent jump (C-s opens new tab with OMP) ────────
+# ── OMP Agent jump ─────────────────────────────────────
+# type=pane 新 pane 继承源 pane cwd（new_cwd=follow），直接 omp 即可；
+# 旧写法 ${HERDR_PANE_CWD:-$HOME} 变量不存在，会恒回退 $HOME
 [[keys.command]]
 key         = "prefix+ctrl+s"
 type        = "pane"
-command     = "omp --cwd=${HERDR_PANE_CWD:-$HOME}"
+command     = "omp"
 description = "New OMP pane"
 
 # ── UI ─────────────────────────────────────────────────
@@ -90,7 +95,9 @@ pane_gaps               = true
 mouse_capture           = true
 copy_on_select          = true
 confirm_close           = true
-accent                  = "#89b4fa"   # catppuccin blue
+prompt_new_tab_name     = false      # 新 tab 立即创建，改名用 prefix+shift+t
+hide_tab_bar_when_single_tab = true
+tab_bar_right           = [{ type = "zoom" }, { type = "datetime" }]
 
 # Agent sidebar: compact display
 agent_panel_sort = "spaces"
@@ -133,7 +140,6 @@ position = "bottom-center"
 [ui.sound]
 enabled = true
 
-
 # ── Session ────────────────────────────────────────────
 [session]
 resume_agents_on_restore = true
@@ -148,6 +154,12 @@ switch_ascii_input_source_in_prefix = true
 reveal_hidden_cursor_for_cjk_ime   = true
 cjk_ime_agents = ["omp", "pi", "kimi", "claude"]
 kitty_graphics = true
+pane_history   = true   # 跨 herdr 重启保留 pane 屏幕历史（配合 resume_agents_on_restore）
+
+# ── Advanced ───────────────────────────────────────────
+[advanced]
+# 每 pane 滚动缓冲上限（默认 10MB → 50MB，容纳长 agent 输出）
+scrollback_limit_bytes = 50000000
 
 # ── Updates ────────────────────────────────────────────
 [update]

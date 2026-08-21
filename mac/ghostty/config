@@ -1,45 +1,56 @@
-# Ghostty config — macOS + Herdr + OMP
-# Path: ~/.config/ghostty/config
+# Ghostty config — macOS + Herdr + OMP（唯一配置源，2026-08-21 整合）
+# 旧 ~/Library/Application Support/com.mitchellh.ghostty/config 已并入本文件并删除
+# 职责划分：Ghostty 只做渲染；分屏/标签/窗口管理交给 Herdr（prefix 键）
 
-# Font
-font-family      = JetBrainsMono Nerd Font
-font-size        = 13
+# ── 字体（Maple Mono NF CN：Nerd Font 图标 + 中文渲染，维持原生效值）──
+font-family      = Maple Mono NF CN
+font-size        = 14
 font-thicken     = true
+adjust-cell-height = 0
 font-feature     = calt
 
-# Theme — Catppuccin, follows macOS light/dark
-theme            = catppuccin
+# ── 主题：Catppuccin 跟随 macOS 深浅色（与 herdr auto_switch 同步）──
+theme            = auto
+theme-light      = catppuccin-latte
+theme-dark       = catppuccin
 background-opacity = 0.92
 background-blur    = 20
-
-# Window
-window-padding-x = 8
-window-padding-y = 4
 window-theme     = auto
-macos-titlebar-style = tabs
 
-# Cursor
+# Option 键发送 ESC（alt 修饰）——herdr 的 prefix+alt+1..9（focus_agent）等 alt 组合键依赖此设置
+macos-option-as-alt = true
+
+# ── 窗口 ──
+window-padding-x = 12
+window-padding-y = 8
+macos-titlebar-style = tabs
+window-save-state = always
+confirm-close-surface = false
+
+# ── 光标 ──
 cursor-style     = bar
 cursor-style-blink = true
 
-# Scrollback
+# ── 滚动/交互 ──
 scrollback-limit = 100000000
 scrollbar        = never
-
-# Mouse
 mouse-hide-while-typing = true
+copy-on-select   = clipboard
+shell-integration = zsh
 
-# Keybinds — font size
+# ── 键位 ──
+# 字体大小
 keybind = ctrl+equal=increase_font_size:1
 keybind = ctrl+minus=decrease_font_size:1
 keybind = ctrl+0=reset_font_size
 
-# Quick terminal (Quake-style drop-down)
+# Quick terminal（Quake 式下拉终端）
 keybind = global:ctrl+grave_accent=toggle_quick_terminal
 quick-terminal-position = top
 quick-terminal-size     = 40%
 
-# Pane splits (Ghostty native, not Herdr)
-keybind = ctrl+shift+d=new_split:right
-keybind = ctrl+shift+down=new_split:down
+# 关闭窗口
 keybind = ctrl+shift+w=close_surface
+
+# 注意：不再绑定 Ghostty 原生分屏（new_split）——分屏由 herdr 管理
+# （prefix+v / prefix+- 或直连 ctrl+alt+d），原生分屏会在 herdr 内再套一层，布局混乱
