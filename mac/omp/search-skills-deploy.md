@@ -16,18 +16,18 @@
 ### 来源
 
 - GitHub：https://github.com/anysearch-ai/anysearch-skill
-- 当前版本：v2.1.0（锁定 tag 下载；最新改动可用 `main` 分支 zip）
+- 当前版本：v3.1.0（锁定 tag 下载；最新改动可用 `main` 分支 zip）
 - 官方文档（API）：https://api.anysearch.com
 
 ### 安装（OMP）
 
 ```bash
-# 下载锁定 release，替换 v2.1.0 为最新 tag
-curl -L -o anysearch-skill.zip https://github.com/anysearch-ai/anysearch-skill/archive/refs/tags/v2.1.0.zip
+# 下载锁定 release，替换 v3.1.0 为最新 tag
+curl -L -o anysearch-skill.zip https://github.com/anysearch-ai/anysearch-skill/archive/refs/tags/v3.1.0.zip
 unzip anysearch-skill.zip
 
 # 移到 skill 目录，重命名为 anysearch
-mv anysearch-skill-2.1.0 <agent_skill_dir>/anysearch
+mv anysearch-skill-3.1.0 <agent_skill_dir>/anysearch
 # OMP 项目级：.omp/skills/anysearch
 # OMP 用户级：~/.omp/agent/skills/anysearch
 # 共享位置（多 agent 共读）：~/.agents/skills/anysearch
@@ -46,17 +46,16 @@ mv anysearch-skill-2.1.0 <agent_skill_dir>/anysearch
 
 ```
 Runtime: Node.js
-Command: node <skill_dir>/scripts/anysearch_cli.js
+Command: bun <skill_dir>/scripts/anysearch_cli.js
 ```
 
-> 当前本机选用 Node.js（无第三方依赖，内置 `https`）。若用 Python 需 `requests` 库。
-> `runtime.conf` 缺失/损坏时回退到 SKILL.md 的 Platform Detection（Python > Node.js > Shell）。
+> 本机无独立 `node`，用项目内 bun 运行（bun 兼容 Node API）。`runtime.conf` 缺失/损坏时回退到 SKILL.md 的 Platform Detection（Python > Node.js > Shell）。
 
 ### 验证
 
 ```bash
-node <skill_dir>/scripts/anysearch_cli.js doc          # 探测 CLI，确认无报错
-node <skill_dir>/scripts/anysearch_cli.js search "hello world" --max_results 1
+bun <skill_dir>/scripts/anysearch_cli.js get_sub_domains --domain finance   # 探测 CLI + kdbx key
+bun <skill_dir>/scripts/anysearch_cli.js search "hello world" --max_results 1
 # 成功返回 JSON 即连通
 ```
 
@@ -64,15 +63,15 @@ node <skill_dir>/scripts/anysearch_cli.js search "hello world" --max_results 1
 
 ```
 anysearch/
-├── SKILL.md              # Agent 运行时指令
-├── .env                  # API key（gitignored，本机自维护）
-├── runtime.conf          # 运行时偏好（gitignored）
-├── runtime.conf.example
-├── .env.example
-├── SECURITY.md / TEST_PLAN.md / LICENSE / NOTICE
+├── SKILL.md              # Agent 运行时指令（v3.1.0：Direct HTTP CLI，移除 MCP/JSON-RPC wrapper）
+├── .env.example          # API key 模板
+├── runtime.conf          # 运行时偏好（本机自维护，含 bun 路径）
+├── SECURITY.md / LICENSE / NOTICE
+├── requirements.txt
 └── scripts/
-    ├── anysearch_cli.py / .js / .ps1 / .sh   # 多平台 CLI
+    ├── anysearch_cli.py / .js / .ps1 / .sh   # 多平台 CLI（v3.1.0 直调 /v1/search 等 REST）
     ├── generate.py
+    ├── test_cli.py       # 跨运行时契约测试
     └── shared/           # constants.json + doc_spec.md（CLI 共享真源）
 ```
 
