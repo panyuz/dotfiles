@@ -9,11 +9,9 @@ font-thicken     = true
 adjust-cell-height = 0
 font-feature     = calt
 
-# ── 主题：Catppuccin 跟随 macOS 深浅色（与 herdr auto_switch 同步）──
-theme            = auto
-theme-light      = catppuccin-latte
-theme-dark       = catppuccin
-background-opacity = 0.92
+# ── 主题：Rose Pine（软暗色护眼，固定暗色不随系统切亮；与 herdr 同步）──
+theme            = rose-pine
+background-opacity = 0.9
 background-blur    = 20
 window-theme     = auto
 
@@ -27,9 +25,9 @@ macos-titlebar-style = tabs
 window-save-state = always
 confirm-close-surface = false
 
-# ── 光标 ──
+# ── 光标（实心不闪烁，减少眼部刺激）──
 cursor-style     = bar
-cursor-style-blink = true
+cursor-style-blink = false
 
 # ── 滚动/交互 ──
 scrollback-limit = 100000000

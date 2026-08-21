@@ -3,12 +3,10 @@
 
 onboarding = false
 
-# ── Theme：跟随 Ghostty 深浅色（与 ghostty theme=auto 同步）──
+# ── Theme：Rose Pine 软暗色护眼（与 ghostty 同步，固定暗色不随系统切亮）──
 [theme]
-name         = "catppuccin"
-auto_switch  = true
-light_name   = "catppuccin-latte"
-dark_name    = "catppuccin"
+name        = "rose-pine"
+auto_switch = false
 
 # ── Terminal ───────────────────────────────────────────
 [terminal]
