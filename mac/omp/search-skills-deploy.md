@@ -162,8 +162,11 @@ byted-web-search/
 两个 skill 的脚本已内置 KDBX fallback：`.env`/环境变量未提供 key 时，直接用 keepassxc-cli 绝对路径从 kdbx 读取条目 Password，注入环境变量。**不落明文 `.env`**。
 
 - keepassxc-cli：`/Applications/KeePassXC.app/Contents/MacOS/keepassxc-cli`
-- 读取命令：`<cli> show --no-password --key-file <keyfile> -s <db> <entry>`，解析 `Password:` 行
+- 读取命令：`<cli> show --no-password --key-file <keyfile> -s -a Password <db> <entry>`（`-a Password` 直接输出值，`-s` 确保 protected 属性显示明文）
 - anysearch（Node，用项目内 bun 运行）：`loadKeyFromKdbx()` 在 `anysearch_cli.js`
-- byted（Python）：`_get_api_key()` 在 `web_search.py`
+- byted（Python）：`_get_api_key()` 在 `web_search.py`；`subprocess.run` 带 `timeout=15` 防 OneDrive 目录挂起
+- 两侧失败均向 stderr 打一行不含密钥的原因（`kdbx fallback failed: ...`），不静默
 
-> 换机时改两个脚本内的 `KEEPASSXC_CLI` / `KDBX` / `KDBX_KEYFILE` 绝对路径，key 仍由 kdbx 提供，不依赖 git 存密钥。
+> **路径收敛**：cli/kdbx/keyfile 收敛为模块级常量，支持环境变量覆盖（`KEEPASSXC_CLI` / `KDBX_DB` / `KDBX_KEYFILE`），默认值即本机 OneDrive 路径。
+
+> 换机时改两个脚本内的 `KEEPASSXC_CLI` / `KDBX` / `KDBX_KEYFILE` 常量（或设环境变量），key 仍由 kdbx 提供，不依赖 git 存密钥。
