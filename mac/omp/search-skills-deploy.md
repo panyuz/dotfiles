@@ -148,3 +148,13 @@ byted-web-search/
 - 🔴 密钥永不入库：`.env`、API key、token 一律占位/排除，提交前跑 `grep -rE 'sk-[a-z0-9]{20,}|as_sk_[a-z0-9]{20,}|WEB_SEARCH_API_KEY=.{8,}' .`（有输出则停下）
 - 🔴 `runtime.conf`、`.env` 属本机自维护产物（含本机路径/密钥），不入 git
 - 🟡 源仓库版本升级后，重新下载 tag 覆盖 skill 目录，重写 `runtime.conf`
+
+### 密钥真源（KeePassXC）
+
+所有 API key 统一存于 KeePassXC 数据库（keyfile 同目录解锁）：
+- 路径：`/Users/panyu/Library/CloudStorage/OneDrive-个人/100Archive/100dataapp/pass/apienv/envapi.kdbx`
+- keyfile：`/Users/panyu/Library/CloudStorage/OneDrive-个人/100Archive/100dataapp/pass/apienv/envapi.key`
+- 条目：`anysearch`（`ANYSEARCH_API_KEY`）、`byted-web-search`（`WEB_SEARCH_API_KEY`）
+- 本机 `.env` 从该库复制，作为 skill 运行时的实际密钥（不入 git）
+
+> 换机时从 kdbx 导出 key 写入各 skill 目录 `.env`，不依赖 git 存密钥。
