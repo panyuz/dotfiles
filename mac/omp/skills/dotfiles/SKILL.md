@@ -18,6 +18,7 @@ dotfiles/
 │   ├── herdr/config.toml     # herdr 主题/快捷键（symlink 到 ~/.config/herdr/config.toml）
 │   └── omp/
 │       ├── agent/APPEND_SYSTEM.md  # omp 系统提示（symlink）
+│       ├── agent/extensions/       # omp 用户级 extension 真源（symlink 到 ~/.omp/agent/extensions/）
 │       ├── search-skills-deploy.md # 联网搜索 skill（anysearch/byted-web-search）部署参考
 │       └── skills/<name>/          # 全局 skill 真源（目录级 symlink 到 ~/.omp/agent/skills/<name>）
 ├── win/                       # Windows 占位（install.ps1）

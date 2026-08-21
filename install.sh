@@ -19,6 +19,11 @@ link() { # link <repo内真源> <目标路径>
 link "$DOTFILES/mac/ghostty/config"          "$HOME/.config/ghostty/config"
 link "$DOTFILES/mac/herdr/config.toml"       "$HOME/.config/herdr/config.toml"
 link "$DOTFILES/mac/omp/agent/APPEND_SYSTEM.md" "$HOME/.omp/agent/APPEND_SYSTEM.md"
+# omp 用户级 extension：循环 link（guard-system-install 等全局拦截扩展）
+for ext_file in "$DOTFILES"/mac/omp/agent/extensions/*.ts; do
+  [ -e "$ext_file" ] || continue
+  link "$ext_file" "$HOME/.omp/agent/extensions/$(basename "$ext_file")"
+done
 # omp config.yml 真身在 ~/.omp/agent/config.yml（本机自维护，不入库，2026-08-21 起）
 
 # omp 全局 skill：目录级 symlink 自动循环（新增 skill 零配置，下次跑 install.sh 自动纳入）
