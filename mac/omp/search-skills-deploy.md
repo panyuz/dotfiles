@@ -1,171 +1,111 @@
 # 联网搜索 Skill 部署参考
 
-> 真源仓库：`~/Documents/github/dotfiles`。本文档记录两个联网搜索 skill 的来源、安装、密钥、运行时配置与验证步骤，供换机/重装/迁移时按此部署。
-> **密钥永不入库**：本文档一律使用 `<YOUR_KEY>` 占位，实际密钥放各 skill 目录本机自维护的 `.env` / 环境变量。
+> 真源仓库：`~/Documents/github/dotfiles`。本文档讲**两个联网搜索 skill 的部署方法与思路**，供换机/重装/迁移时按此重建。不逐条复刻 skill 内部文件，重思路、轻细节。
+> **密钥永不入库**：真实 key 一律存 KeePassXC（见 §4），本文件只用 `<YOUR_KEY>` 占位。
 
-## 部署清单（换机后按序执行）
+## 部署思路总览
 
-1. 安装 anysearch（见 §1）→ 配置 key → 写 `runtime.conf` → 跑 `doc`/`search` 验证
-2. 安装 byted-web-search（见 §2）→ 配置 `WEB_SEARCH_API_KEY` → 跑 `search` 验证
-3. 放对 skill 目录后重启 omp 会话，`skill://anysearch` / `skill://byted-web-search` 可解析
+两个 skill 都是"**从官方源拉取 → 放入 omp skill 目录 → 脚本内嵌 keepassxc-cli 从 kdbx 取 key → 用项目级运行时调用**"。核心三件事：
+
+1. **正确源**：各 skill 从官方仓库/市场拉取（见 §1/§2），不用来历不明的副本
+2. **密钥**：不落明文 `.env`，脚本运行时用 `keepassxc-cli` 从 KeePassXC kdbx 动态取（见 §3）
+3. **运行时**：一律用项目级命令（`bun`/`bunx`/`uv`），**不用 `npx`、系统 `python`/`node`**（本机禁全局安装依赖，见 §4）
+
+### omp skill 目录（放对即自动注册）
+
+- **项目级**：`<项目>/.omp/skills/<name>`（本项目用这个）
+- **用户级**：`~/.omp/agent/skills/<name>`（跨项目共享）
+- omp 启动时自动扫描目录，放对即注册，无需改 config.yml；改 skill 后需重启 omp 会话生效
 
 ---
 
 ## 1. anysearch
 
-### 来源
+**正确源**：`https://github.com/anysearch-ai/anysearch-skill`（GitHub 官方仓库）
+**当前版本**：v3.1.0
+**运行时**：Node 脚本，用项目内 `bun` 运行（非系统 `node`）
 
-- GitHub：https://github.com/anysearch-ai/anysearch-skill
-- 当前版本：v3.1.0（锁定 tag 下载；最新改动可用 `main` 分支 zip）
-- 官方文档（API）：https://api.anysearch.com
+**部署思路**：
+1. 从官方仓库下载锁定 tag（`v3.1.0`）zip，解压重命名为 `anysearch`，放入 `.omp/skills/anysearch`
+2. 在 `scripts/anysearch_cli.js` 的 `loadEnv()` 后注入 `loadKeyFromKdbx()`（见 §3）
+3. 写 `runtime.conf`，Command 用 `bun` 调用脚本
+4. 重启 omp 会话，`skill://anysearch` 可解析
 
-### 安装（OMP）
-
+**关键命令**（项目级）：
 ```bash
-# 下载锁定 release，替换 v3.1.0 为最新 tag
-curl -L -o anysearch-skill.zip https://github.com/anysearch-ai/anysearch-skill/archive/refs/tags/v3.1.0.zip
-unzip anysearch-skill.zip
-
-# 移到 skill 目录，重命名为 anysearch
-mv anysearch-skill-3.1.0 <agent_skill_dir>/anysearch
-# OMP 项目级：.omp/skills/anysearch
-# OMP 用户级：~/.omp/agent/skills/anysearch
-# 共享位置（多 agent 共读）：~/.agents/skills/anysearch
+# 运行/验证（用 bun，不用 node）
+bun .omp/skills/anysearch/scripts/anysearch_cli.js get_sub_domains --domain finance
+bun .omp/skills/anysearch/scripts/anysearch_cli.js search "hello world" --max_results 1
 ```
 
-### API Key
-
-- 获取：https://anysearch.com/console/api-keys （可匿名使用，额度低；注册后额度高）
-- 优先级：`--api_key` CLI flag > `.env`（`ANYSEARCH_API_KEY`）> 环境变量 > 匿名
-- 配置：skill 根目录建 `.env`：`ANYSEARCH_API_KEY=<YOUR_KEY>`
-- 一键注册：`POST https://api.anysearch.com/v1/auth/email/register`，body `{"email": "you@example.com"}`，返回一次性明文 key（需用户真实邮箱收密码）
-
-### runtime.conf（推荐运行时固化）
-
-`<skill_dir>/runtime.conf`，Agent 加载 skill 时读取，命中则跳过平台探测直接使用：
-
-```
-Runtime: Node.js
-Command: bun <skill_dir>/scripts/anysearch_cli.js
-```
-
-> 本机无独立 `node`，用项目内 bun 运行（bun 兼容 Node API）。`runtime.conf` 缺失/损坏时回退到 SKILL.md 的 Platform Detection（Python > Node.js > Shell）。
-
-### 验证
-
-```bash
-bun <skill_dir>/scripts/anysearch_cli.js get_sub_domains --domain finance   # 探测 CLI + kdbx key
-bun <skill_dir>/scripts/anysearch_cli.js search "hello world" --max_results 1
-# 成功返回 JSON 即连通
-```
-
-### 文件结构（关键项）
-
-```
-anysearch/
-├── SKILL.md              # Agent 运行时指令（v3.1.0：Direct HTTP CLI，移除 MCP/JSON-RPC wrapper）
-├── .env.example          # API key 模板
-├── runtime.conf          # 运行时偏好（本机自维护，含 bun 路径）
-├── SECURITY.md / LICENSE / NOTICE
-├── requirements.txt
-└── scripts/
-    ├── anysearch_cli.py / .js / .ps1 / .sh   # 多平台 CLI（v3.1.0 直调 /v1/search 等 REST）
-    ├── generate.py
-    ├── test_cli.py       # 跨运行时契约测试
-    └── shared/           # constants.json + doc_spec.md（CLI 共享真源）
-```
+> v3.1.0 起改为 Direct HTTP CLI（直调 `/v1/search` 等 REST，移除 MCP/JSON-RPC wrapper）。
 
 ---
 
 ## 2. byted-web-search
 
-### 来源
+**正确源**：`https://skills.volces.com/skills/bytedance/agentkit-samples`（火山官方 skill 市场；对应 GitHub `bytedance/agentkit-samples`）
+**当前版本**：v1.3.8
+**运行时**：Python 脚本，用项目内 `uv run` 运行（非系统 `python`）
 
-- GitHub：https://github.com/bytedance/agentkit-samples/tree/main/skills/byted-web-search
-- 当前版本：v1.3.8
-- 官方文档：https://www.volcengine.com/docs/87772/2272953
-- 安装（openclaw 系）：`npx skills add https://skills.volces.com/skills/bytedance/agentkit-samples -s byted-web-search --agent openclaw`
-- 或直接把本目录放入 Agent skill 目录
+**部署思路**：
+1. 从火山官方源获取 skill（或从 GitHub `bytedance/agentkit-samples/skills/byted-web-search`），放入 `.omp/skills/byted-web-search`
+2. 在 `scripts/web_search.py` 的 `_get_api_key()` 里注入 kdbx 取 key（见 §3），并补 `AGENT_PLAN_URL` 定义（上游有 NameError bug）
+3. 重启 omp 会话，`skill://byted-web-search` 可解析
 
-### API Key（两种用户）
-
-**个人用户**：
-1. https://console.volcengine.com/search-infinity/web-search → 开通
-2. https://console.volcengine.com/search-infinity/api-key → 创建 API Key
-
-**Agent Plan 用户（两步，顺序不能颠倒）**：
-1. 先配 Harness：https://console.volcengine.com/ark/region:ark+cn-beijing/openManagement?LLM=%7B%7D&advancedActiveKey=agentPlan → 「配置 Harness」→ 开通「联网搜索/豆包搜索」
-2. 再复制 Key：https://console.volcengine.com/ark/region:ark+cn-beijing/apiKey?apikey=%7B%7D
-
-### 凭证配置
-
-- 环境变量：`WEB_SEARCH_API_KEY=<YOUR_KEY>`
-- 本地 `.env`：skill 根目录 `WEB_SEARCH_API_KEY=<YOUR_KEY>`
-- 命令行：`--api-key <YOUR_KEY>`（优先级最高）
-- 亦可：`VOLCENGINE_ACCESS_KEY` + `VOLCENGINE_SECRET_KEY`（AK/SK，可选）
-- 免费额度：个人每月 500 次（2026-07-01 起各开通方式共享，次月 1 日重置）
-
-### 用法
-
+**关键命令**（项目级）：
 ```bash
-# 在 skill 根目录（或脚本绝对路径）
-uv run python scripts/web_search.py "搜索词" [--count 10] [--type web|image] [--time-range OneDay] [--auth-level 1] [--query-rewrite]
+# 运行/验证（用 uv run，不用 python）
+uv run python .omp/skills/byted-web-search/scripts/web_search.py "搜索词" --count 5
 ```
 
-### 验证
-
-```bash
-uv run python scripts/web_search.py "北京今日天气" --api-key "<YOUR_KEY>"
-```
-
-### 文件结构（关键项）
-
-```
-byted-web-search/
-├── SKILL.md              # Agent 运行时指令
-├── README.md / LICENSE
-├── scripts/web_search.py
-└── references/
-    ├── setup-guide.md    # 开通与配置
-    ├── quick-start.md    # 快速开通与迷路兜底
-    └── troubleshooting.md# 错误码说明
-```
+> **注意**：`npx skills add ...` 会装到 `.agents/`、`.claude/` 等**非 omp 目录**，且不带本地的 kdbx 注入——本项目不用它，直接从源取 skill 目录后手工注入。
 
 ---
 
-## 3. 本机实际部署位置（现状）
+## 3. 用 keepassxc-cli 从 kdbx 取 key（核心方法）
 
-| skill | 目录 |
-|---|---|
-| anysearch | `~/Documents/github/INVEST/.omp/skills/anysearch` |
-| byted-web-search | `~/Documents/github/INVEST/.omp/skills/byted-web-search` |
+两个 skill 的 key 统一存于 KeePassXC 数据库，**keyfile-only 解锁**（`--no-password --key-file`）。脚本运行时动态读取，**不落明文 `.env`**。
 
-> 当前按项目级部署在 INVEST 项目内。若需全局（跨项目）共享，改放 `~/.omp/agent/skills/<name>`（omp 用户级扫描目录），放对目录即自动注册，无需改 config.yml。
+### 数据库与解锁
+
+- 数据库：`/Users/panyu/Library/CloudStorage/OneDrive-个人/100Archive/100dataapp/pass/apienv/envapi.kdbx`
+- keyfile：`/Users/panyu/Library/CloudStorage/OneDrive-个人/100Archive/100dataapp/pass/apienv/envapi.key`（同目录，64B 随机二进制）
+- 条目：`anysearch`、`byted-web-search`（Password 即 API key）
+- keepassxc-cli：`/Applications/KeePassXC.app/Contents/MacOS/keepassxc-cli`（本机唯一路径，非 PATH）
+
+### 读取命令（关键）
+
+```bash
+# -a Password 直接输出该属性值（无 label 解析）；-s 确保 protected 属性显示明文
+# keyfile-only：--no-password --key-file；KDBX 4 格式（keepassxc-cli 2.7.12 原生支持）
+keepassxc-cli show --no-password --key-file <keyfile> -s -a Password <db> <entry>
+```
+
+### 脚本内注入方式
+
+- **anysearch**（Node）：`loadEnv()` 后加 `loadKeyFromKdbx()`——`execFileSync` 调 keepassxc-cli，解析输出注入 `process.env.ANYSEARCH_API_KEY`
+- **byted**（Python）：`_get_api_key()` 里 `subprocess.run` 调 keepassxc-cli（带 `timeout=15` 防 OneDrive 目录挂起），解析注入 `WEB_SEARCH_API_KEY`
+
+**要点**：
+- 路径收敛为模块级常量，支持环境变量覆盖（`KEEPASSXC_CLI` / `KDBX_DB` / `KDBX_KEYFILE`），默认值即本机 OneDrive 路径
+- 失败不静默：向 stderr 打一行不含密钥的原因（`kdbx fallback failed: ...`），不阻断（可匿名访问或走 AK/SK）
+- 密钥走 stdout 捕获，不进命令行参数/进程列表/日志
+
+---
 
 ## 4. 硬规则
 
-- 🔴 密钥永不入库：`.env`、API key、token 一律占位/排除，提交前跑 `grep -rE 'sk-[a-z0-9]{20,}|as_sk_[a-z0-9]{20,}|WEB_SEARCH_API_KEY=.{8,}' .`（有输出则停下）
+- 🔴 **密钥永不入库**：API key/token 一律占位或存 kdbx；提交前跑 `grep -rE 'as_sk_[a-z0-9]{20,}|sk-[a-z0-9]{20,}|WEB_SEARCH_API_KEY=.{8,}' .`（有输出则停下）
+- 🔴 **本机禁全局安装依赖**：不用 `npx`、系统 `python`/`node`、`brew install`——一律 `bun`/`bunx`/`uv run`（项目级，见 AGENTS.md）
 - 🔴 `runtime.conf`、`.env` 属本机自维护产物（含本机路径/密钥），不入 git
-- 🟡 源仓库版本升级后，重新下载 tag 覆盖 skill 目录，重写 `runtime.conf`
+- 🟡 换机时改两脚本内的 `KEEPASSXC_CLI`/`KDBX_DB`/`KDBX_KEYFILE` 常量（或设环境变量），key 仍由 kdbx 提供
 
 ### 密钥真源（KeePassXC）
 
-所有 API key 统一存于 KeePassXC 数据库（keyfile 同目录解锁）：
-- 路径：`/Users/panyu/Library/CloudStorage/OneDrive-个人/100Archive/100dataapp/pass/apienv/envapi.kdbx`
-- keyfile：`/Users/panyu/Library/CloudStorage/OneDrive-个人/100Archive/100dataapp/pass/apienv/envapi.key`
-- 条目：`anysearch`（`ANYSEARCH_API_KEY`）、`byted-web-search`（`WEB_SEARCH_API_KEY`）
-- 数据库为 **keyfile-only**（`--no-password --key-file`），KDBX 4 格式（keepassxc-cli 2.7.12 原生支持）
+| skill | 条目 | key 环境变量 | 来源 |
+|---|---|---|---|
+| anysearch | `anysearch` | `ANYSEARCH_API_KEY` | https://github.com/anysearch-ai/anysearch-skill |
+| byted-web-search | `byted-web-search` | `WEB_SEARCH_API_KEY` | https://skills.volces.com/skills/bytedance/agentkit-samples |
 
-### 动态取 key（无需明文）
-
-两个 skill 的脚本已内置 KDBX fallback：`.env`/环境变量未提供 key 时，直接用 keepassxc-cli 绝对路径从 kdbx 读取条目 Password，注入环境变量。**不落明文 `.env`**。
-
-- keepassxc-cli：`/Applications/KeePassXC.app/Contents/MacOS/keepassxc-cli`
-- 读取命令：`<cli> show --no-password --key-file <keyfile> -s -a Password <db> <entry>`（`-a Password` 直接输出值，`-s` 确保 protected 属性显示明文）
-- anysearch（Node，用项目内 bun 运行）：`loadKeyFromKdbx()` 在 `anysearch_cli.js`
-- byted（Python）：`_get_api_key()` 在 `web_search.py`；`subprocess.run` 带 `timeout=15` 防 OneDrive 目录挂起
-- 两侧失败均向 stderr 打一行不含密钥的原因（`kdbx fallback failed: ...`），不静默
-
-> **路径收敛**：cli/kdbx/keyfile 收敛为模块级常量，支持环境变量覆盖（`KEEPASSXC_CLI` / `KDBX_DB` / `KDBX_KEYFILE`），默认值即本机 OneDrive 路径。
-
-> 换机时改两个脚本内的 `KEEPASSXC_CLI` / `KDBX` / `KDBX_KEYFILE` 常量（或设环境变量），key 仍由 kdbx 提供，不依赖 git 存密钥。
+> 换机恢复：clone dotfiles → 按 §1/§2 拉 skill → 注入 §3 的 kdbx 取 key → 改路径常量 → 重启 omp 会话。key 从 kdbx 取，不依赖 git 存密钥。
