@@ -47,3 +47,15 @@ herdr pane send-keys <pane> enter                                # 补 enter 提
 | 适用 | 盘感类分析、需要向用户展示过程 | 要数据深度的正式评估 |
 
 实测案例：同一收盘数据 + 同角色提示词，Pi 版老刀给"sleeve 半解冻试 ¥5,000"，subagent 版老刀"volume 补齐前只够试仓级别"——subagent 多拉一层数据后明显更谨慎。四实例（2 模型 × 2 通道）对大盘定性判断完全收敛，说明结论稳健。
+## Pi 作为调用方（caller 侧）——pi 会话经 herdr 编排其他 agent（2026-08-30 实测）
+
+场景：pi 主会话（INVEST 项目）通过 herdr CLI 向另一 pane 的 pi 面板派发只读迁移评审任务（评审员 deepseek-v4-pro）。
+
+- **启动**：`herdr agent start pi-review --kind pi --pane <空shell pane>`——空 argv 缺省模型 = 用户 defaultModel，4s ready。
+- **提交**：`agent prompt --wait` 对 pi 同样出现 timeout/stalled → **无条件补 `send-keys enter`**（与 kimi 同款，实测两次派发皆需）。
+- **状态语义陷阱**：prompt 返回的 `agent_status=done` 可能是上一轮残留——判断本轮是否真开工用 `agent read` 看现场，别只信状态字段。
+- **多轮复用**：同一 pi-review 会话「评审 → 修复 → 复检」三轮 prompt+enter，上下文延续（复检轮直接引用首轮发现，无需重发背景）。
+- **产出读取**：`agent read --source recent-unwrapped --lines N`；评审报告较长时加大 `--lines` 分段取。
+- **派发前核对模型注册**：`~/.pi/agent/models-store.json` 的 provider/models/id——ollama-cloud 库 `kimi-k3` 为裸 id（无 `:cloud` 后缀），带后缀会 Model not found 降级 custom id。
+- **只读评审提示词设计**：角色自包含 + 逐条核查命令清单（让评审员真跑命令出证据）+ 证据要求（命令+关键输出）+ 输出格式（blocker/minor/note + PASS/FAIL 结论）——本次评审真抓到 blocker（omp 专属 API `pi.logger`/`pi.sessionManager` 在 pi ExtensionAPI 不存在，迁移扩展原样搬运会运行时抛错）。
+- **与 ask_advisor 扩展工具的分工**：扩展工具 = one-shot 无状态咨询（快、省、结果直达上下文）；herdr 常驻 = 多轮/连续/过程可见（重、可追问）。前者做常规咨询，后者做连续协作与编排。
