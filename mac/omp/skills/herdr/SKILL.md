@@ -1,6 +1,7 @@
 ---
 name: herdr
 description: "Control Herdr, a terminal multiplexer for coding agents. Use only when the user explicitly mentions Herdr or asks to use Herdr to inspect or control panes, tabs, workspaces, commands, or another agent. Do not use merely because a task could benefit from a background terminal, delegation, or parallel work. Requires HERDR_ENV=1."
+disable-model-invocation: true
 ---
 
 # Herdr
@@ -271,9 +272,14 @@ daemon 由插件自动管理（state：`~/.local/state/herdr/plugins/official.br
 9. **多轮复用**：agent pane 保持运行，多轮 `prompt + send-keys enter` 复用同一会话（上下文累积，kimi 实测 20%→35%），无需重启。每轮 `prompt --wait` 在 12-15s 超时返回 timeout 错误是**正常现象**（文本已发出，补 enter 即提交），不是失败。
 10. **等待时长预期**（`agent wait --timeout 300000`）：agy（Gemini Flash）5-20s 完成；kimi code 90-280s（swarm 模式更久）；后台 task 型顾问（老刀/Kimi）1-4 分钟——多路并行时先等快的收结果，慢的用 `agent wait` 阻塞。
 
+## Pi (pi CLI) 交互实战（2026-08-28 实测）
+
+Pi 是独立 coding agent CLI（会话存 `~/.pi/agent/sessions/`），与 omp 配置体系完全分开。模型 id 踩坑（ollama-cloud 库内注册 id 是 `kimi-k3` **不带 `:cloud` 后缀**；omp 与 pi 凭据/模型配置互不相通）、角色提示词必须完整发送（角色+数据一个文件一次发出）、三种退出方式（`/quit` 最干净；`/exit` 不是退出命令）、`--kind pi` 对已运行实例补注册名字、与 omp subagent 双通道深浅对照——详见 `references/pi-interaction.md`。
+
 ## References
 
 - `references/kimi-code-interaction.md` — kimi code 交互实战：`agent prompt` 反复 `agent_prompt_stalled`（paste 后 Enter 不提交）的根因与修复流程（prompt 后补 `send-keys enter`）。与 kimi kind 交互前必读。
+- `references/pi-interaction.md` — Pi (pi CLI) 交互实战（2026-08-28）：模型 id 踩坑（`kimi-k3` 不带 `:cloud`；omp/pi 配置互不相通）、角色+数据提示词完整发送、三种退出方式、`--kind pi` 补注册、双通道深浅对照。与 pi kind 交互前必读。
 - `references/agy-interaction.md` — agy（Antigravity CLI）交互实战：账号资格验证卡死与重启修复、prompt 流程、`--dangerously-skip-permissions`、发送通道陷阱（`pane run` 勿用于 TUI）。与 agy kind 交互前必读。
 - `references/mcp-config.md` — MCP 项目级配置实战（2026-08-16）：agy 用 `.agents/mcp_config.json`（`serverUrl`），kimi code 用 `.kimi-code/mcp.json`（`url`），beaver-zotero 实例、重启生效、`/mcp` 与 `kimi -p` 验证法。给 pane 内 agent 装 MCP 前必读。
 
