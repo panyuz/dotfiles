@@ -61,6 +61,27 @@ uv run python .omp/skills/byted-web-search/scripts/web_search.py "搜索词" --c
 
 > **注意**：`npx skills add ...` 会装到 `.agents/`、`.claude/` 等**非 omp 目录**，且不带本地的 kdbx 注入——本项目不用它，直接从源取 skill 目录后手工注入。
 
+### pi 部署变体（2026-09-03，v1.3.4）
+
+`npx skills add` 对 **pi 原生可用**（CLI 直接装到 `~/.pi/agent/skills/`）。两个已核实的坑：
+
+- **`~/.agents/` 是 skills CLI 自己的 hub（账本 `.skill-lock.json`），不是 agy 的用户级 skill 目录**——agy（Antigravity CLI）亲口确认：它只自动发现 **workspace 级** `<项目>/.agents/skills/` 和全局 `~/.gemini/config/`，不扫用户级 `~/.agents/`。CLI 会按检测到的 agent 多份复制（本机连 `~/.kiro/` 历史残留也塞了一份）。
+- **`skills remove <name> -g` 会从所有 agent 目录一并卸载**（包括 pi 主部署），不只是 hub——误伤后需从源重装重打补丁。
+
+结论：**hub 与副本全部删掉，只保留 `~/.pi/agent/skills/` 主部署**；以后想让 agy 用，在项目里建 workspace 级 symlink 指向 pi 那份（并 gitignore，因含 kdbx 本机补丁）：
+
+```bash
+npx -y skills add https://skills.volces.com/skills/bytedance/agentkit-samples -s byted-web-search -g --copy -y   # 之后清 hub
+rm -rf ~/.agents   # 或加 -a 圈定避免多余副本：npx skills add ... -a pi
+```
+
+装完需两处本地化（针对 `~/.pi/agent/skills/byted-web-search/`，omp 部署可参照）：
+
+1. `scripts/web_search.py`：按 §3 注入 kdbx 取 key（`_get_api_key` 增加 `_load_api_key_from_kdbx()`，`subprocess.run` 带 `timeout=15`）。注：skills.volces.com well-known 版有 `AGENT_PLAN_URL` 未定义的 NameError bug，需补定义；GitHub agentkit-samples 源码版无此 bug（两者文本有差异，打补丁前先 grep 锚点）
+2. skill 目录加 `pyproject.toml`（依赖 `requests`），SKILL.md 调用改为 uv 形式（GitHub 版：`uv run --project {baseDir} python {baseDir}/scripts/web_search.py ...`）
+
+验证：`cd ~/.pi/agent/skills/byted-web-search && uv run python scripts/web_search.py "搜索词" --count 3`（首次 uv 自动建 .venv；kdbx 注入成功则直接出结果，无凭证报错）。pi 会话启动时扫描 skill 目录，装完需新开会话生效。
+
 ---
 
 ## 3. 用 keepassxc-cli 从 kdbx 取 key（核心方法）
@@ -98,6 +119,7 @@ keepassxc-cli show --no-password --key-file <keyfile> -s -a Password <db> <entry
 
 - 🔴 **密钥永不入库**：API key/token 一律占位或存 kdbx；提交前跑 `grep -rE 'as_sk_[a-z0-9]{20,}|sk-[a-z0-9]{20,}|WEB_SEARCH_API_KEY=.{8,}' .`（有输出则停下）
 - 🔴 **本机禁全局安装依赖**：不用 `npx`、系统 `python`/`node`、`brew install`——一律 `bun`/`bunx`/`uv run`（项目级，见 AGENTS.md）
+- 🔴 **skill 一律复制安装**（2026-09-03 起）：从官方源取 skill 目录复制进目标 skill 目录，再做本机本地化；**不用 `npx skills add`**——会向检测到的多个 agent 目录扩散、不带本机补丁，`skills remove -g` 还会误伤主部署（详见 §2 pi 部署变体）
 - 🔴 `runtime.conf`、`.env` 属本机自维护产物（含本机路径/密钥），不入 git
 - 🟡 换机时改两脚本内的 `KEEPASSXC_CLI`/`KDBX_DB`/`KDBX_KEYFILE` 常量（或设环境变量），key 仍由 kdbx 提供
 
