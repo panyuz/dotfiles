@@ -82,6 +82,13 @@ rm -rf ~/.agents   # 或加 -a 圈定避免多余副本：npx skills add ... -a 
 
 验证：`cd ~/.pi/agent/skills/byted-web-search && uv run python scripts/web_search.py "搜索词" --count 3`（首次 uv 自动建 .venv；kdbx 注入成功则直接出结果，无凭证报错）。pi 会话启动时扫描 skill 目录，装完需新开会话生效。
 
+> **2026-09-04 迁移：pi 统一用用户级，不再放 INVEST 项目级**
+> INVEST 项目级副本与全局主部署撞名（pi auto 取项目级、全局副本被跳过，会话启动每次报 collision），已 `git rm`（INVEST 提交 6744c16）。现状：
+> - **pi 部署位 = `~/.pi/agent/skills/byted-web-search`（真目录，非 symlink）**，v1.3.8 补丁版（从 INVEST 项目副本同步，含 2026-08-14 NameError 修复、错误提示、quick-start/troubleshooting）+ `pyproject.toml`（依赖 requests，非项目目录内 uv run 必需）
+> - **补丁版真源**：INVEST git 库（`.omp/skills/byted-web-search` 副本仍跟踪 v1.3.8，与 pi 版仅差 SKILL.md 的 `disable-model-invocation: true` 一行；`.pi/skills` 删除前内容在提交 6744c16 的父提交）。换机恢复：官方源拉取+§3 注入，或从 INVEST 库 `.omp` 副本拷贝后补 `pyproject.toml` 与 frontmatter
+> - **INVEST 侧引用已改指全局路径**：`justfile` web-search recipe、`scripts/append_byted.py` sys.path（`Path.home() / ".pi/agent/skills/byted-web-search/scripts"`）
+> - omp 项目副本（INVEST `.omp/skills/`）不动，供 omp 会话；pi 会话在 INVEST 内同样自动发现用户级 skill，功能无损失
+
 ---
 
 ## 3. 用 keepassxc-cli 从 kdbx 取 key（核心方法）
