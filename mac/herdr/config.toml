@@ -13,6 +13,15 @@ auto_switch = false
 default_shell = "zsh"
 shell_mode    = "auto"       # login shell on macOS
 new_cwd       = "follow"     # inherit from source pane
+# 🔴 2026-09-11 图片显示排查：herdr 0.9.0 起本项正式位置为 [terminal]，
+#   且「Pane images and the graphics API are now enabled by default in compatible terminals」
+#   旧位置 [experimental].kitty_graphics 仍被接受，但已非正式路径 → 迁到此处。
+# ⚠️ herdr 二进制原文： "kitty_graphics changes require restarting Herdr; kept current setting"
+#   → `herdr server reload-config` 对本项无效，**必须完整重启**（herdr server stop 后重开）。
+# ✅ 实测结论（2026-09-11）：herdr 0.9.0 的 kitty 图形通道 **单条与分块（m=1/m=0 续传）均正常**
+#   （用 pi 的 encodeKitty 格式复刻 4 组测试，全数渲染成功）→ herdr 侧无缺陷。
+#   pi issue #7585（图片区域空白）属 herdr ≤0.8.0 旧版问题，与本机 0.9.0 无关，仅作历史参考。
+kitty_graphics = true
 
 # ── Keys — prefix-first, tmux-alike ────────────────────
 [keys]
@@ -148,10 +157,16 @@ manage_ssh_config = true
 
 # ── macOS CJK IME fixes ────────────────────────────────
 [experimental]
+# 2026-09-11 排查记录（已回滚）：曾因误判「Cmd+V 粘贴失效」而将下列两项置 false，
+#   后定位真因 = **Ghostty 的 Cmd+V 路径不处理纯图片剪贴板数据**（上游 discussion #10478），
+#   与 IME 无关 → 已改回原值。
+#   📌 图片粘贴要点：pi 的图片粘贴键位是 **Ctrl+V**（app.clipboard.pasteImage），
+#   **Cmd+V 对纯图片剪贴板完全无效**（Ghostty 只处理文件URL/文本，无内容可发 → 什么都送不到 pi）。
+#   pi 行为：Ctrl+V 先读剪贴板图片→存 $TMPDIR/pi-clipboard-<uuid>.png→**只插入路径文本，不渲染预览**。
 switch_ascii_input_source_in_prefix = true
 reveal_hidden_cursor_for_cjk_ime   = true
 cjk_ime_agents = ["pi", "kimi", "claude"]
-kitty_graphics = true
+# kitty_graphics 已迁往 [terminal]（0.9.0 正式位置，见上）；pane_history 仍留本段。
 pane_history   = true   # 跨 herdr 重启保留 pane 屏幕历史（配合 resume_agents_on_restore）
 
 # ── Advanced ───────────────────────────────────────────
