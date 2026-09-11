@@ -8,7 +8,7 @@
 | # | 工具 | 类型 | 版本 | 安装方式 | 部署位置 | 本机补丁 |
 |---|------|------|------|----------|----------|----------|
 | 1 | anysearch | skill（Node / `bun`） | **v3.1.1** | 官方源复制 | **两份**：`.pi/` + `.omp/` | **3 处** |
-| 2 | byted-web-search | skill（Python / `uv`） | **v1.3.8** | 官方源复制 | **两份**：`~/.pi/agent/` + `.omp/` | **4 处** |
+| 2 | byted-web-search | skill（Python / `uv`） | **v1.3.8** | 官方源复制 | **两份**：`~/.pi/agent/`（本机全局，不入库）+ `.omp/`（入库） | **6 处 + 2 文件** |
 | 3 | twitter-cli | PyPI（`uv tool`） | **0.8.5** | `uv tool install` | `~/.local/share/uv/tools/` | 无 |
 | 4 | rdt-cli | PyPI（`uv tool`） | **0.4.1** | `uv tool install` | 同上 | 无 |
 
@@ -122,10 +122,38 @@ uv run python .pi/skills/anysearch/scripts/anysearch_cli.py get_sub_domains --do
 
 ### 两份部署位置
 
-- `~/.pi/agent/skills/byted-web-search`（pi **用户级**；⚠️ **不在任何 git 仓库里**，含补丁，换机会丢）
-- `~/Documents/github/INVEST/.omp/skills/byted-web-search`（omp 项目级，受 INVEST git 跟踪）
+| 副本 | 位置 | 层级 | git 跟踪 | 定位 |
+|------|------|------|----------|------|
+| **pi 版** | `~/.pi/agent/skills/byted-web-search` | **用户级（本机全局）** | ❌ 不入库 | 跨项目共享，**本机环境的一部分** |
+| **omp 版** | `~/Documents/github/INVEST/.omp/skills/byted-web-search` | 项目级 | ✅ INVEST 库 | 项目内 omp 会话用 |
 
-### 本机补丁 4 处（换机恢复 / 升级时逐条重打）
+> 📌 **pi 版按「本机全局」定位处理，有意不纳入 git**（与 `~/.pi/agent/` 下其他全局配置同待遇）。
+> 代价：**本文档是它唯一的重建依据**——所以下面的补丁表与重建步骤必须保持完整可执行。
+
+### 换机重建 pi 全局副本（照此逐步执行）
+
+```bash
+# 1) 取官方源到临时目录（⚠️ 不要用 skills add 直接安装，会向 79 个 agent 目录扩散，见 §5）
+mkdir -p /tmp/dl && cd /tmp/dl && git init -q
+bunx skills add "https://skills.volces.com/skills/bytedance/agentkit-samples" \
+  -s byted-web-search --copy -y
+# → 产物在 /tmp/dl/.pi/skills/byted-web-search（.agents/ hub 等其他副本全在临时目录内）
+
+# 2) 复制到用户级
+mkdir -p ~/.pi/agent/skills && cp -R /tmp/dl/.pi/skills/byted-web-search ~/.pi/agent/skills/
+
+# 3) 打下面 6 处补丁 + 补目录级 2 个文件（见下节表格）
+
+# 4) 建 .venv（pyproject.toml 依赖 requests）
+cd ~/.pi/agent/skills/byted-web-search && uv sync
+
+# 5) 功能验证（出结果即 kdbx 取 key 成功）
+uv run python scripts/web_search.py "测试" --count 3
+```
+
+6. 新开 pi 会话生效（skill 为启动时扫目录注册）
+
+### 本机补丁 6 处 + 2 个新增文件（换机恢复 / 升级时逐条重打）
 
 | # | 位置 | 补丁内容 | 规模 |
 |---|------|----------|------|
@@ -293,8 +321,10 @@ keepassxc-cli show --no-password --key-file <keyfile> -s -a Password <db> <entry
 | anysearch | `anysearch` | `ANYSEARCH_API_KEY` | https://github.com/anysearch-ai/anysearch-skill |
 | byted-web-search | `byted-web-search` | `WEB_SEARCH_API_KEY` | https://skills.volces.com/skills/bytedance/agentkit-samples |
 
-> 换机恢复：clone dotfiles → 按 §1/§2 拉 skill（**两份都建**）→ 重打补丁（anysearch 3 处 / byted 4 处，见各自章节）
+> 换机恢复：clone dotfiles → 按 §1/§2 拉 skill（**两份都建**；byted 的 pi 全局副本按 §2 专节重建）
+> → 重打补丁（anysearch 3 处 / byted 6 处 + 2 文件，见各自章节）
 > → 注入 §4 的 kdbx 取 key → 改路径常量 → 装 §3 的两个 uv tool → 新开会话生效。key 从 kdbx 取，不依赖 git 存密钥。
 >
-> ⚠️ **最易漏的一步**：byted 的 pi 副本（`~/.pi/agent/skills/byted-web-search`，**含补丁**）**不在任何 git 仓库里**——
-> 换机后必须从 INVEST 库的 `.omp` 副本拷回，或按 §2 从官方源重打补丁，否则该 skill 会丢。
+> ⚠️ **唯一需手工重建的环节**：byted 的 **pi 全局副本**（`~/.pi/agent/skills/byted-web-search`，含补丁）按「本机全局」定位
+> **有意不入 git**——所以换机时它是唯一无法从仓库拷回的项。
+> 按 §2「换机重建 pi 全局副本」逐步执行（已写成可直接跑的流程），或从 INVEST 库的 `.omp` 副本拷回后补 `pyproject.toml` + frontmatter。
