@@ -20,6 +20,12 @@
  *    仅拦截 uv pip install --system 与 uv tool install（装到 ~/.local，非项目级）。
  * 8. 无 UI 时 fail-closed 直接拒绝；有 UI 时提供"放行一次"人工逃生口。
  *
+ * 策略（2026-09-13 用户确认）：**全局安装一律硬拒**，不弹窗、无「放行一次」逃生口——
+ * AI 不得代劳，需要安装时由用户在自己的终端执行；工程依赖走项目级隔离
+ * （R: renv::install / renv::restore；Python: uv add；Node: bun add）。
+ * 与之配套：pi-permission-system 的 config.json 已撤除全部安装类规则（单一执行点），
+ * 只保留 文件/目录范围 与 rm -rf、sudo 的 deny/ask。
+ *
  * 已知残余风险（正则/静态分析守卫的根本局限，需 sandbox 或网络层防护兜底）：
  * - 变量/别名/命令替换拼接：`P=pip; $P install x`、`$(echo pip) install x`
  * - 脚本文件内的间接安装：`bash setup.sh`、`source x.sh`、`make install`
@@ -294,6 +300,7 @@ const OPAQUE_BLOCK_RES: RegExp[] = [
   /\binstaller\s+-pkg\b/i,
   /\bsudo\b/i,
   // —— R：包一律装项目库（renv::install / renv::restore），install.packages 等写全局库 ——
+  /\bpip\.main\s*\(/i,                      // python -c "import pip; pip.main(['install',…])"
   /\binstall\.packages\s*\(/i,
   /\binstall_(?:github|gitlab|git|bitbucket|url|version|local)\s*\(/i,
   /\bBiocManager\s*::\s*install\b/i,
@@ -371,7 +378,7 @@ function basename(p: string): string {
 // ---------- extension 入口 ----------
 
 export default function guardSystemInstall(pi: ExtensionAPI) {
-  pi.on("tool_call", async (event, ctx) => {
+  pi.on("tool_call", async (event) => {
     if (event.toolName !== "bash") return undefined;
 
     const command = event.input.command as string;
@@ -384,17 +391,13 @@ export default function guardSystemInstall(pi: ExtensionAPI) {
       `命中规则 ${verdict.rule}：${verdict.reason}` +
       (verdict.segment ? `\n命令片段: ${verdict.segment}` : "");
 
-    if (!ctx.hasUI) {
-      // 非交互模式 fail-closed：无人工确认入口时一律拒绝
-      return { block: true, reason: `系统安装命令被守卫拦截（无 UI，fail-closed）。${detail}` };
-    }
-
-    const choice = await ctx.ui.select(
-      `⛔ 拦截系统级安装命令\n\n${detail}\n\n项目约束：只允许 uv / bun 等项目级隔离安装。`,
-      ["拒绝（推荐）", "放行一次"],
-    );
-    if (choice === "放行一次") return undefined;
-
-    return { block: true, reason: `系统安装命令被守卫拦截。${detail}` };
+    // 硬拒（2026-09-13 起）：不弹窗、不提供「放行一次」——全局安装一律由用户本人执行。
+    return {
+      block: true,
+      reason:
+        `⛔ 全局安装/提权命令被守卫硬拦截（AI 不得代劳，须用户本人操作）。\n${detail}\n\n` +
+        `策略：全局环境不装任何东西。需要时请在你自己的终端手动执行；` +
+        `工程依赖走项目级隔离（R: renv::install / renv::restore；Python: uv add；Node: bun add）。`,
+    };
   });
 }
