@@ -222,6 +222,22 @@ const RULES: Rule[] = [
     test: (r) => hasWord(r, ["install", "selfupdate", "upgrade"]),
   },
   {
+    id: "r-install",
+    head: /^R(?:script)?$/,
+    reason: "R 包必须装进项目库（非全局）：用 renv::install() / renv::restore()；install.packages / install_github / BiocManager::install / pkg_install 会写入全局库",
+    test: (r) =>
+      /\binstall\.packages\s*\(/.test(r) ||
+      /\binstall_(?:github|gitlab|git|bitbucket|url|version|local)\s*\(/.test(r) ||
+      /\bBiocManager\s*::\s*install\b/.test(r) ||
+      /\bpkg_install\s*\(/.test(r),
+  },
+  {
+    id: "r-cmd-install",
+    head: /^R$/,
+    reason: "R CMD INSTALL 写入 .libPaths() 首位（可能是系统框架库）",
+    test: (r) => /\bCMD\s+INSTALL\b/.test(r),
+  },
+  {
     id: "nix-env",
     head: /^nix-env$/,
     reason: "nix-env -i 装入用户 profile",
@@ -252,7 +268,7 @@ const GLOBAL_RULES: Array<{ id: string; reason: string; re: RegExp }> = [
 // ---------- 不透明执行段 ----------
 
 const SHELL_HEAD_RE = /^(?:ba|z|fi|da|k)?sh$/;
-const SCRIPT_FLAG_HEAD_RE = /^(?:python(?:\d+(?:\.\d+)*)?|node|bun|deno|ruby|perl)$/;
+const SCRIPT_FLAG_HEAD_RE = /^(?:python(?:\d+(?:\.\d+)*)?|node|bun|deno|ruby|perl|Rscript|R)$/;
 
 /**
  * "不透明执行"：命令本体藏在参数/引号里，去引号匹配会漏掉，必须按原文匹配。
@@ -277,6 +293,12 @@ const OPAQUE_BLOCK_RES: RegExp[] = [
   /\b(?:cargo|go|gem|pipx|mas|port)\s+install\b/i,
   /\binstaller\s+-pkg\b/i,
   /\bsudo\b/i,
+  // —— R：包一律装项目库（renv::install / renv::restore），install.packages 等写全局库 ——
+  /\binstall\.packages\s*\(/i,
+  /\binstall_(?:github|gitlab|git|bitbucket|url|version|local)\s*\(/i,
+  /\bBiocManager\s*::\s*install\b/i,
+  /\bpkg_install\s*\(/i,
+  /\bR\s+CMD\s+INSTALL\b/i,
 ];
 
 // ---------- 主分析函数 ----------
