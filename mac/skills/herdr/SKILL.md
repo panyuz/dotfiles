@@ -259,21 +259,20 @@ daemon 由插件自动管理（state：`~/.local/state/herdr/plugins/official.br
 
 ## 多 panel 编排实战（2026-08-10 实测）
 
-多顾问并行场景：一个 pane 跑 omp 主会话，右侧 pane 跑 kimi code yolo，下方 pane 跑 agy，三个 agent 收同一份提示词。完整流程：
+多顾问并行场景：一个 pane 跑 omp 主会话，另开两个 pane 跑别的 agent（agy、pi 等），几个 agent 收同一份提示词。完整流程：
 
 1. **退出 pane 内已有 omp 会话**：`herdr pane send-keys <pane> ctrl+d`（EOF 直接退 TUI 回 shell；会话可 `omp --resume <id>` 恢复，退出前 read visible 记下 resume id）。
-2. **kimi code yolo**：`herdr agent start <name> --kind kimi --pane <pane-id> -- -y`（`-y` = yolo 自动批准工具调用）。交互细节见 `references/kimi-code-interaction.md`。
+2. **第二个 agent**：`herdr agent start <name> --kind <kind> --pane <pane-id> -- <启动参数>`。各 kind 的交互细节见下方 References 对应笔记（agy、pi 已实测）。
 3. **agy CLI**：`herdr agent start <name> --kind agy --pane <pane-id> -- --dangerously-skip-permissions`。首次启动可能卡账号资格验证（"Verifying your account... please try again shortly"）——ctrl+c 两次退出后重启即过；验证横幅期间 prompt 会静默丢失。见 `references/agy-interaction.md`。
 4. **第三 pane 布局**：`herdr pane split --pane <id> --direction down --no-focus`（split 只支持 right/down；无 tab 级分栏）。**先建好布局再发 prompt**——运行中 split 会 resize 已有 agent 的 TUI。
-5. **共享提示词**：写一份 prompt 文件（`local://advice-prompt.md`），`herdr agent prompt <name> "$(cat <绝对路径>)" --wait` 后**无条件补 `send-keys <name> enter`**（kimi 必须；agy 无害）。
-6. **收尾取全文**：`agent get` 看状态、`agent read --source recent-unwrapped` 取回复。⚠️ kimi code 长输出（尤其 swarm 子代理模式）在 alternate screen，`recent-unwrapped` 只能拿到可见部分（出现 `ctrl+o to expand` 提示）——分多段 `--lines` 读或让它把完整回复写文件。
-7. **退出 agent（2026-08-10 实测三种方式）**：
+5. **共享提示词**：写一份 prompt 文件（`local://advice-prompt.md`），`herdr agent prompt <name> "$(cat <绝对路径>)" --wait` 后**无条件补 `send-keys <name> enter`**（对 pi 等 kind 必须；agy 无害）。
+6. **收尾取全文**：`agent get` 看状态、`agent read --source recent-unwrapped` 取回复。⚠️ 长输出（尤其 swarm/子代理模式）常渲染在 alternate screen，`recent-unwrapped` 只能拿到可见部分（出现 `ctrl+o to expand` 提示）——分多段 `--lines` 读或让它把完整回复写文件。
+7. **退出 agent（2026-08-10 实测）**：
    - omp：`pane send-keys <pane> ctrl+d`（EOF 直退，会话 `omp --resume <id>` 恢复）
-   - kimi code：ctrl+d **无效**，用 `pane send-text <pane> /exit` + `enter`；退出时界面提示 `kimi -r session_<id>` 恢复命令，先 read visible 记下
    - agy：`agent send-keys ctrl+c` **两次**（第一次进 "press ctrl+c again to exit" 确认态，第二次退出）；重启要在 pane 回 shell（`❯`）后进行，否则 `agent start` 报 exit 5
 8. **关闭 panel**：`herdr pane close <pane-id>`（agent 已退出后直接关；未退时先按第 7 条退出）。清场顺序：退出 agents → close panes → 主 omp 最后 Ctrl+D。
-9. **多轮复用**：agent pane 保持运行，多轮 `prompt + send-keys enter` 复用同一会话（上下文累积，kimi 实测 20%→35%），无需重启。每轮 `prompt --wait` 在 12-15s 超时返回 timeout 错误是**正常现象**（文本已发出，补 enter 即提交），不是失败。
-10. **等待时长预期**（`agent wait --timeout 300000`）：agy（Gemini Flash）5-20s 完成；kimi code 90-280s（swarm 模式更久）；后台 task 型顾问（老刀/Kimi）1-4 分钟——多路并行时先等快的收结果，慢的用 `agent wait` 阻塞。
+9. **多轮复用**：agent pane 保持运行，多轮 `prompt + send-keys enter` 复用同一会话（上下文累积），无需重启。每轮 `prompt --wait` 在 12-15s 超时返回 timeout 错误是**正常现象**（文本已发出，补 enter 即提交），不是失败。
+10. **等待时长预期**（`agent wait --timeout 300000`）：agy（Gemini Flash）5-20s 完成；后台 task 型顾问（老刀/Kimi）1-4 分钟——多路并行时先等快的收结果，慢的用 `agent wait` 阻塞。
 
 ## Pi (pi CLI) 交互实战（2026-08-28 实测）
 
@@ -281,8 +280,7 @@ Pi 是独立 coding agent CLI（会话存 `~/.pi/agent/sessions/`），与 omp �
 
 ## References
 
-- `references/kimi-code-interaction.md` — kimi code 交互实战：`agent prompt` 反复 `agent_prompt_stalled`（paste 后 Enter 不提交）的根因与修复流程（prompt 后补 `send-keys enter`）。与 kimi kind 交互前必读。
 - `references/pi-interaction.md` — Pi (pi CLI) 交互实战（2026-08-28）：模型 id 踩坑（`kimi-k3` 不带 `:cloud`；omp/pi 配置互不相通）、角色+数据提示词完整发送、三种退出方式、`--kind pi` 补注册、双通道深浅对照。与 pi kind 交互前必读。
 - `references/agy-interaction.md` — agy（Antigravity CLI）交互实战：账号资格验证卡死与重启修复、prompt 流程、`--dangerously-skip-permissions`、发送通道陷阱（`pane run` 勿用于 TUI）。与 agy kind 交互前必读。
-- `references/mcp-config.md` — MCP 项目级配置实战（2026-08-16）：agy 用 `.agents/mcp_config.json`（`serverUrl`），kimi code 用 `.kimi-code/mcp.json`（`url`），beaver-zotero 实例、重启生效、`/mcp` 与 `kimi -p` 验证法。给 pane 内 agent 装 MCP 前必读。
+- `references/mcp-config.md` — MCP 项目级配置实战（2026-08-16）：agy 用 `.agents/mcp_config.json`（`serverUrl`），beaver-zotero 实例、端点探测 curl、重启生效、`/mcp` 验证法。给 pane 内 agent 装 MCP 前必读。
 

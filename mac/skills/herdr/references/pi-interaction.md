@@ -52,7 +52,7 @@ herdr pane send-keys <pane> enter                                # 补 enter 提
 场景：pi 主会话（INVEST 项目）通过 herdr CLI 向另一 pane 的 pi 面板派发只读迁移评审任务（评审员 deepseek-v4-pro）。
 
 - **启动**：`herdr agent start pi-review --kind pi --pane <空shell pane>`——空 argv 缺省模型 = 用户 defaultModel，4s ready。
-- **提交**：`agent prompt --wait` 对 pi 同样出现 timeout/stalled → **无条件补 `send-keys enter`**（与 kimi 同款，实测两次派发皆需）。
+- **提交**：`agent prompt --wait` 对 pi 同样出现 timeout/stalled → **无条件补 `send-keys enter`**（实测两次派发皆需）。
 - **状态语义陷阱**：prompt 返回的 `agent_status=done` 可能是上一轮残留——判断本轮是否真开工用 `agent read` 看现场，别只信状态字段。
 - **多轮复用**：同一 pi-review 会话「评审 → 修复 → 复检」三轮 prompt+enter，上下文延续（复检轮直接引用首轮发现，无需重发背景）。
 - **产出读取**：`agent read --source recent-unwrapped --lines N`；评审报告较长时加大 `--lines` 分段取。

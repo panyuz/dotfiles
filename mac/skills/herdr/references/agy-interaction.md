@@ -41,7 +41,7 @@ prompt 需在横幅消失、出现干净 `>` 提示符后发送。判断就绪�
 
 ```bash
 herdr agent prompt <name> "<任务>" --wait --timeout 20000
-herdr agent send-keys <name> enter      # 补发 Enter（与 kimi 同法，无害；agy 本次直接提交成功）
+herdr agent send-keys <name> enter      # 补发 Enter（无害，agy 本次直接提交成功）
 herdr agent wait <name> --timeout 300000
 herdr agent read <name> --source recent-unwrapped --lines 100   # 读全文
 ```
