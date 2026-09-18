@@ -28,11 +28,17 @@ done
 # omp config.yml 真身在 ~/.omp/agent/config.yml（本机自维护，不入库，2026-08-21 起）
 
 # 全局 skill（mac/skills/ 共享真源）：目录级 symlink 自动循环，新增 skill 零配置
-# pi 用户级扫描目录 = ~/.pi/agent/skills/（settings.json 未声明 skills，纯自动扫描）
+# 目标 1：pi 用户级 ~/.pi/agent/skills/（settings.json 未声明 skills，纯自动扫描）
+# 目标 2：agy 用户级 ~/.gemini/antigravity-cli/skills/（Antigravity CLI 官方全局位，symlink 被跟随；
+#         agy 2.0/IDE 的位不同 = ~/.gemini/config/skills/，只认绝对路径，需要时另加）
 # omp 的 ~/.omp/agent/skills/ 已不再纳管（2026-09-18；omp 弃用）
 for skill_dir in "$DOTFILES"/mac/skills/*/; do
   [ -d "$skill_dir" ] || continue
-  link "${skill_dir%/}" "$HOME/.pi/agent/skills/$(basename "$skill_dir")"
+  name="$(basename "$skill_dir")"
+  link "${skill_dir%/}" "$HOME/.pi/agent/skills/$name"
+  if [ -d "$HOME/.gemini/antigravity-cli" ]; then
+    link "${skill_dir%/}" "$HOME/.gemini/antigravity-cli/skills/$name"
+  fi
 done
 
 # herdr plugins.json：不纳管（插件管理器回写的状态文件，本机自维护）

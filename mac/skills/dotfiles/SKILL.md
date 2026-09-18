@@ -6,7 +6,7 @@ description: "管理 ~/Documents/github/dotfiles 仓库：macOS 全局配置（g
 # dotfiles 仓库管理
 
 > 真源：`~/Documents/github/dotfiles`（远程 `git@github.com:panyuz/dotfiles.git`，分支 main）
-> 部署位置：`~/.config/*`、`~/.pi/agent/*` 均为 **symlink** 指向仓库
+> 部署位置：`~/.config/*`、`~/.pi/agent/*`、`~/.gemini/antigravity-cli/skills/*` 均为 **symlink** 指向仓库
 
 ## 仓库结构
 
@@ -16,7 +16,7 @@ dotfiles/
 │   ├── ghostty/config        # 终端外观/字体/快捷键（symlink 到 ~/.config/ghostty/config）
 │   ├── herdr/config.toml     # herdr 主题/快捷键（symlink 到 ~/.config/herdr/config.toml）
 │   ├── pi/agent/AGENTS.md    # pi 全局指令（symlink 到 ~/.pi/agent/AGENTS.md）
-│   ├── skills/<name>/        # 全局 skill 真源（目录级 symlink 到 ~/.pi/agent/skills/<name>）
+│   ├── skills/<name>/        # 全局 skill 真源（目录级 symlink → ~/.pi/agent/skills/ 与 ~/.gemini/antigravity-cli/skills/）
 │   └── omp/                  # ⚠️ omp 已弃用（2026-09-18），保留仅作历史参考
 │       ├── agent/APPEND_SYSTEM.md  # omp 系统提示（曾 symlink 到 ~/.omp/agent/）
 │       ├── agent/extensions/       # omp 用户级 extension 真源
@@ -41,6 +41,8 @@ dotfiles/
 - **pi 加载时机 = 会话启动**：新增/修改 skill 后需**重启 pi 会话**才生效（当前会话有启动时缓存）。
 - **`disable-model-invocation: true`**（pi frontmatter 字段）：该 skill 不进系统提示，模型看不见、只能用户 `/skill:<name>` 手动调——用于「必须用户明确点名才用」的 skill（如 herdr）。
 - pi 忽略未知 frontmatter 字段（如旧 omp 的 `hide: true`），校验宽松；`name` 不要求与目录同名，便于共享目录。
+- **agy（Antigravity CLI）全局 skill 目录 = `~/.gemini/antigravity-cli/skills/`**（官方文档核实 2026-09-18；不是 `~/.gemini/config/skills/`——那是 Antigravity 2.0 / IDE 的位，且只认绝对路径、不认 `~`）。symlink 目录被跟随；用 `agy -p "/skills"` 可列出实际生效清单（比问模型可靠——模型可能漏报）。
+- **agy 只识 name/description**（官方仅这两个字段）：pi 的 `disable-model-invocation` 在 agy 侧无效，herdr 在 agy 里靠 description 自律（“仅在用户明确提到 Herdr 时才用”）。
 - omp 已弃用（2026-09-18）：`~/.omp/agent/*` 不再随 install.sh 更新；`mac/omp/` 目录仅留历史参考与搜索 skill 部署笔记。
 - herdr 的 `plugins.json` 是插件管理器回写状态文件（含本机绝对路径）——**不纳管**，留在 `~/.config/herdr/plugins.json` 本机自维护。
 - `~/.omp/agent/config.yml`、`~/.omp/agent/models.yml` 本机自维护（可能含密钥/本机偏好）——**不入库**。
@@ -71,6 +73,7 @@ cd ~/Documents/github/dotfiles && git add -A && git commit -m "skill: 新增 <na
 ```
 
 验证：`readlink ~/.pi/agent/skills/<name>` 指向仓库内路径；重启 pi 会话后 `/skill:<name>` 可解析。
+agy 侧：`readlink ~/.gemini/antigravity-cli/skills/<name>` + `agy -p "/skills"` 应在清单里看到（install.sh 已自动分发，无需手工）。
 
 ### 3. 新增某工具的配置
 
