@@ -165,7 +165,7 @@ manage_ssh_config = true
 #   pi 行为：Ctrl+V 先读剪贴板图片→存 $TMPDIR/pi-clipboard-<uuid>.png→**只插入路径文本，不渲染预览**。
 switch_ascii_input_source_in_prefix = true
 reveal_hidden_cursor_for_cjk_ime   = true
-cjk_ime_agents = ["pi", "kimi", "claude"]
+cjk_ime_agents = ["pi", "claude"]
 # kitty_graphics 已迁往 [terminal]（0.9.0 正式位置，见上）；pane_history 仍留本段。
 pane_history   = true   # 跨 herdr 重启保留 pane 屏幕历史（配合 resume_agents_on_restore）
 
