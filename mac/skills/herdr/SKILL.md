@@ -1,7 +1,11 @@
 ---
 name: herdr
 description: "Control Herdr, a terminal multiplexer for coding agents. Use only when the user explicitly mentions Herdr or asks to use Herdr to inspect or control panes, tabs, workspaces, commands, or another agent. Do not use merely because a task could benefit from a background terminal, delegation, or parallel work. Requires HERDR_ENV=1."
+disable-model-invocation: true
 ---
+
+> **真源**：`~/Documents/github/dotfiles/mac/skills/herdr`（共享 skill）。由 `install.sh` 目录级 symlink 部署到 `~/.pi/agent/skills/herdr`；改这个目录即改部署，**不要另建副本**。
+> `disable-model-invocation: true` 是 pi 的「只许手动调用」开关（见 pi docs/skills.md），用来把描述里那句「仅在用户明确提到 Herdr 时才用」变成机制保证，而不是靠模型自觉。
 
 # Herdr
 

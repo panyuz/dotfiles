@@ -18,6 +18,7 @@ link() { # link <repo内真源> <目标路径>
 # ghostty / herdr / omp agent 配置（文件级 symlink）
 link "$DOTFILES/mac/ghostty/config"          "$HOME/.config/ghostty/config"
 link "$DOTFILES/mac/herdr/config.toml"       "$HOME/.config/herdr/config.toml"
+# ⚠️ omp 已弃用（2026-09-18 确认）：以下两条 ~/.omp 链接保留仅为历史兼容，不再新增/维护
 link "$DOTFILES/mac/omp/agent/APPEND_SYSTEM.md" "$HOME/.omp/agent/APPEND_SYSTEM.md"
 # omp 用户级 extension：循环 link（guard-system-install 等全局拦截扩展）
 for ext_file in "$DOTFILES"/mac/omp/agent/extensions/*.ts; do
@@ -26,11 +27,12 @@ for ext_file in "$DOTFILES"/mac/omp/agent/extensions/*.ts; do
 done
 # omp config.yml 真身在 ~/.omp/agent/config.yml（本机自维护，不入库，2026-08-21 起）
 
-# omp 全局 skill：目录级 symlink 自动循环（新增 skill 零配置，下次跑 install.sh 自动纳入）
-# 用户级扫描目录 = ~/.omp/agent/skills/（非 ~/.omp/skills/，2026-08-12 源码核实）
-for skill_dir in "$DOTFILES"/mac/omp/skills/*/; do
+# 全局 skill（mac/skills/ 共享真源）：目录级 symlink 自动循环，新增 skill 零配置
+# pi 用户级扫描目录 = ~/.pi/agent/skills/（settings.json 未声明 skills，纯自动扫描）
+# omp 的 ~/.omp/agent/skills/ 已不再纳管（2026-09-18；omp 弃用）
+for skill_dir in "$DOTFILES"/mac/skills/*/; do
   [ -d "$skill_dir" ] || continue
-  link "${skill_dir%/}" "$HOME/.omp/agent/skills/$(basename "$skill_dir")"
+  link "${skill_dir%/}" "$HOME/.pi/agent/skills/$(basename "$skill_dir")"
 done
 
 # herdr plugins.json：不纳管（插件管理器回写的状态文件，本机自维护）

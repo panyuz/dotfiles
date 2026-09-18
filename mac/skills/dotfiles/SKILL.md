@@ -1,13 +1,12 @@
 ---
 name: dotfiles
-description: "管理 ~/Documents/github/dotfiles 仓库：macOS 全局配置（ghostty/herdr/omp 及全局 skill）的 git 真源。当用户要求修改全局配置、新增/修改全局 skill、部署/同步 dotfiles、换机恢复环境时使用。"
-hide: true
+description: "管理 ~/Documents/github/dotfiles 仓库：macOS 全局配置（ghostty/herdr/pi 及全局 skill）的 git 真源。当用户要求修改全局配置、新增/修改全局 skill、部署/同步 dotfiles、换机恢复环境时使用。"
 ---
 
 # dotfiles 仓库管理
 
 > 真源：`~/Documents/github/dotfiles`（远程 `git@github.com:panyuz/dotfiles.git`，分支 main）
-> 部署位置：`~/.config/*`、`~/.omp/agent/*` 均为 **symlink** 指向仓库（除 plugins.json 与含密钥/运行时文件本机自维护）
+> 部署位置：`~/.config/*`、`~/.pi/agent/*` 均为 **symlink** 指向仓库
 
 ## 仓库结构
 
@@ -16,11 +15,12 @@ dotfiles/
 ├── mac/                      # macOS 专属配置
 │   ├── ghostty/config        # 终端外观/字体/快捷键（symlink 到 ~/.config/ghostty/config）
 │   ├── herdr/config.toml     # herdr 主题/快捷键（symlink 到 ~/.config/herdr/config.toml）
-│   └── omp/
-│       ├── agent/APPEND_SYSTEM.md  # omp 系统提示（symlink）
-│       ├── agent/extensions/       # omp 用户级 extension 真源（symlink 到 ~/.omp/agent/extensions/）
-│       ├── search-skills-deploy.md # 联网搜索 skill（anysearch/byted-web-search）部署参考
-│       └── skills/<name>/          # 全局 skill 真源（目录级 symlink 到 ~/.omp/agent/skills/<name>）
+│   ├── pi/agent/AGENTS.md    # pi 全局指令（symlink 到 ~/.pi/agent/AGENTS.md）
+│   ├── skills/<name>/        # 全局 skill 真源（目录级 symlink 到 ~/.pi/agent/skills/<name>）
+│   └── omp/                  # ⚠️ omp 已弃用（2026-09-18），保留仅作历史参考
+│       ├── agent/APPEND_SYSTEM.md  # omp 系统提示（曾 symlink 到 ~/.omp/agent/）
+│       ├── agent/extensions/       # omp 用户级 extension 真源
+│       └── search-skills-deploy.md # 联网搜索 skill（anysearch/byted-web-search）部署参考
 ├── win/                       # Windows 占位（install.ps1）
 ├── shared/                    # 跨平台配置占位
 ├── install.sh                 # macOS 部署（幂等 symlink + 备份冲突 + 自动循环链接 skills）
@@ -28,14 +28,20 @@ dotfiles/
 └── .gitignore                 # 排除 *.log/*.sock/session.json/release-notes.json/.plugins.lock/**/models.yml
 ```
 
+> **2026-09-18 变更**：全局 skill 真源由 `mac/omp/skills/` 迁到 **`mac/skills/`**（名实相符：herdr、dotfiles 都不属于 omp），
+> 部署方式从「omp 真源 + pi 实体副本」改为 **单一真源 + symlink 双端**；omp 已弃用，install.sh 不再纳管 `~/.omp/*`。
+
 > **2026-08-21 规则**：omp 等 agent 仅纳管**文本文件**（mcp/skills/append/prompt）；
 > `config.yml`、`models.yml` 等本机自维护（真身在 `~/.omp/agent/`，不入库）。
 
 ## 关键机制（源码核实的硬事实）
 
-- **omp 用户级 skill 扫描目录 = `~/.omp/agent/skills/`**（不是 `~/.omp/skills/`！2026-08-12 源码核实 builtin.ts）。symlink 目录被支持（`isDirectory() || isSymbolicLink()` 均放行）。
-- **skill 发现是自动目录扫描**：放对目录即自动注册，config.yml 无需任何声明/注册。
-- **omp 加载时机 = 会话启动**：新增/修改 skill 后需**重启 omp 会话**才生效（当前会话有启动时缓存）。
+- **pi 用户级 skill 扫描目录 = `~/.pi/agent/skills/`**（`settings.json` 未声明 `skills` 数组，纯自动扫描）。symlink 目录被支持（现有 `dotfiles`/`herdr` 即为 symlink，实测可用）。
+- **skill 发现是自动目录扫描**：放对目录即自动注册，无需任何声明/注册。
+- **pi 加载时机 = 会话启动**：新增/修改 skill 后需**重启 pi 会话**才生效（当前会话有启动时缓存）。
+- **`disable-model-invocation: true`**（pi frontmatter 字段）：该 skill 不进系统提示，模型看不见、只能用户 `/skill:<name>` 手动调——用于「必须用户明确点名才用」的 skill（如 herdr）。
+- pi 忽略未知 frontmatter 字段（如旧 omp 的 `hide: true`），校验宽松；`name` 不要求与目录同名，便于共享目录。
+- omp 已弃用（2026-09-18）：`~/.omp/agent/*` 不再随 install.sh 更新；`mac/omp/` 目录仅留历史参考与搜索 skill 部署笔记。
 - herdr 的 `plugins.json` 是插件管理器回写状态文件（含本机绝对路径）——**不纳管**，留在 `~/.config/herdr/plugins.json` 本机自维护。
 - `~/.omp/agent/config.yml`、`~/.omp/agent/models.yml` 本机自维护（可能含密钥/本机偏好）——**不入库**。
 
@@ -55,15 +61,16 @@ cd ~/Documents/github/dotfiles && git add -A && git commit -m "<类别>: <改动
 
 ```bash
 # 1) 真源建在仓库
-mkdir -p ~/Documents/github/dotfiles/mac/omp/skills/<name>
-# 写 SKILL.md（必须含 name + description frontmatter——native provider requireDescription）
-# 2) 部署（install.sh 自动循环链接 skills 目录，无需改脚本）
+mkdir -p ~/Documents/github/dotfiles/mac/skills/<name>
+# 写 SKILL.md（必须含 name + description frontmatter；description 非空才被加载）
+# 若需「只许手动调用」：frontmatter 加 disable-model-invocation: true
+# 2) 部署（install.sh 自动循环链接 mac/skills/*，无需改脚本）
 ~/Documents/github/dotfiles/install.sh
 # 3) 提交推送
 cd ~/Documents/github/dotfiles && git add -A && git commit -m "skill: 新增 <name>" && git push
 ```
 
-验证：`ls ~/.omp/agent/skills/<name>/SKILL.md`；重启 omp 会话后 `skill://<name>` 可解析。
+验证：`readlink ~/.pi/agent/skills/<name>` 指向仓库内路径；重启 pi 会话后 `/skill:<name>` 可解析。
 
 ### 3. 新增某工具的配置
 
