@@ -35,4 +35,3 @@
 
 - git 远程操作失败(push/pull,SSH 权限类):立即停止,不重试、不换 remote/协议、不试其它 SSH key;提醒解锁 KeePassXC 并等确认
 - 禁止系统级安装(`pip install`、`npm -g`、`brew install` 等);Python 一律用 `uv`（含 `-c` 单行与 heredoc——**禁用系统 python3**，项目 Python 环境由 uv 管控），Node 用 `bun`/`bunx`/`npx` 项目内执行;查看 JSON 优先用 `jq`（或内置 read 工具），需要 Python 才动用 uv
-- **例外（2026-09-22 用户裁决）**：`duckdb` CLI（brew 安装，单二进制无包管理器污染）——用户本人操作安装，agent 不得代执行 brew；与项目 uv 内 duckdb 同版本（1.5.5），extension 缓存共享（`~/.duckdb/extensions/`）
