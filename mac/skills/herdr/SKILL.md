@@ -6,6 +6,12 @@ disable-model-invocation: true
 
 > **真源**：`~/Documents/github/dotfiles/mac/skills/herdr`（共享 skill）。由 `install.sh` 目录级 symlink 部署到 `~/.pi/agent/skills/herdr`；改这个目录即改部署，**不要另建副本**。
 > `disable-model-invocation: true` 是 pi 的「只许手动调用」开关（见 pi docs/skills.md），用来把描述里那句「仅在用户明确提到 Herdr 时才用」变成机制保证，而不是靠模型自觉。
+> **本文件同步自 `herdr --skill`（2026-09-22，herdr 当前安装版输出）**；官方内容更新时重跑 `herdr --skill > 正文` 再拼装本头。
+
+---
+name: herdr
+description: "Control Herdr, a terminal multiplexer for coding agents. Use only when the user explicitly mentions Herdr or asks to use Herdr to inspect or control panes, tabs, workspaces, commands, or another agent. Do not use merely because a task could benefit from a background terminal, delegation, or parallel work. Requires HERDR_ENV=1."
+---
 
 # Herdr
 
@@ -40,8 +46,8 @@ herdr worktree
 herdr terminal
 herdr notification
 herdr integration
-herdr plugin
 herdr session
+herdr machine
 ```
 
 Do not run bare `herdr` for discovery; it launches or attaches the TUI. Do not probe a mutating nested command by omitting arguments. Commands such as `herdr workspace create` are valid with defaults and will execute.
@@ -60,7 +66,7 @@ A pane exists whether or not it contains an agent. `agent start` requires an exi
 
 Agent commands accept either a unique live agent name or the pane ID currently hosting that agent. They do not accept terminal IDs or bare agent-kind labels. Names must match `[a-z][a-z0-9_-]{0,31}` and be unique among live agents. A name follows the current pane occupant and is cleared when that agent exits, is released, or is replaced.
 
-`idle` means the agent is ready for input and its tab has been seen in the focused Herdr UI. `done` is the same underlying idle state after unseen background work finishes. Focusing the tab or targeting the pane or agent with a focus command marks it seen. CLI reads do not mark it seen. `blocked` means Herdr recognized an approval or question UI. `unknown` means an agent is present but Herdr cannot classify it confidently; it does not prove completion.
+`idle` and `done` both mean the agent is ready for input. The CLI/API uses the server's seen state to distinguish them; explicit focus commands mark the target seen, while reads do not. Each TUI client tracks viewed completions independently, so its Done badge can differ from the CLI or another client's badge. `blocked` means Herdr recognized an approval or question UI. `unknown` means an agent is present but Herdr cannot classify it confidently; it does not prove completion.
 
 ## Use IDs and caller context
 
@@ -78,7 +84,7 @@ Herdr injects the caller's context into each managed pane:
 printf '%s\n' "$HERDR_WORKSPACE_ID" "$HERDR_TAB_ID" "$HERDR_PANE_ID"
 ```
 
-Prefer `--current` when a pane command should target the calling pane. Omitting a target may use the UI-focused pane, which can belong to the user or another client.
+Prefer `--current` when a pane command should target the calling pane. An omitted `pane split` target uses the calling pane when `HERDR_PANE_ID` is available, otherwise the focused pane. Other commands may use the UI-focused pane, which can belong to the user or another client.
 
 Discover live state with:
 
@@ -91,6 +97,22 @@ herdr agent list
 ```
 
 Creation responses expose the IDs to use next. `workspace create` returns `.result.workspace`, `.result.tab`, and `.result.root_pane`. `tab create` returns `.result.tab` and `.result.root_pane`. `pane split` returns the new pane as `.result.pane`.
+
+IDs and live agent names are scoped to one server. Two saved SSH machines can both have `w1:p1` or an agent named `reviewer`. Selecting a machine in the TUI does not retarget commands running in your pane: without `--machine`, they still use the inherited session and socket context.
+
+To control a saved SSH machine, use the same global prefix for discovery and every later command:
+
+```bash
+herdr --machine <label-or-id> agent list
+herdr --machine <label-or-id> pane list
+herdr --machine <label-or-id> agent prompt <remote-agent-name> "Reply with your current status." --wait --timeout 120000
+```
+
+The selector must be an enabled saved profile ID or a unique, case-sensitive label, not an arbitrary SSH hostname. Commands use that profile's remote session without an open TUI. Do not combine `--machine` with `--session` or `--remote`. Discover IDs on that machine; inherited local IDs and `--current` do not identify remote panes.
+
+Both installations must support machine API forwarding, and the remote server must already be running and API-compatible. Forwarding never installs, starts, or restarts a server and never falls back to Local. Local configuration, session management, installation commands, and interactive attachment are not forwarded. Remote worktree paths must be absolute, `~`, or start with `~/`; plugin link paths must be absolute. A connection failure does not prove a mutation was not applied: inspect remote state before retrying.
+
+`herdr machine list` lists saved connection profiles, not a cross-machine pane inventory; add `--json` for scripts. Only add, remove, enable, or disable profiles when the user asks. Removing a profile disconnects the client but does not stop remote sessions. Adding a machine uses the remote default session unless `--remote-session` is explicitly supplied. Setup asks before stopping an incompatible server and defaults to No; do not approve replacement without the user's consent. Experimental handoff is not part of `machine add`.
 
 ## Start and coordinate an agent
 
@@ -130,9 +152,9 @@ Submit work through the agent surface:
 herdr agent prompt reviewer "Review the current diff and report only actionable findings." --wait --timeout 120000
 ```
 
-`agent prompt` honors the pane's live bracketed-paste mode and sends text followed by encoded Enter after a short delay. It rejects an agent already waiting at an approval or question dialog with `agent_blocked` before sending any input. Inspect the blocked UI and ask the user before answering it. For normal agent work, `--wait` is enough: it waits for the first settled `idle`, `done`, or `blocked` state. Do not repeat those defaults with `--until`.
+`agent prompt` honors the pane's live bracketed-paste mode and sends text followed by encoded Enter as one ordered submission. It reports successful submission only after both have been written; that alone does not prove the agent started a turn. For Codex on Windows, Herdr sends a paste boundary before Enter so submission does not depend on prompt size. It rejects an agent already waiting at an approval or question dialog with `agent_blocked` before sending any input. Inspect the blocked UI and ask the user before answering it. For normal agent work, `--wait` is enough: it waits for the first settled `idle`, `done`, or `blocked` state. Do not repeat those defaults with `--until`.
 
-A prompt sent from a non-working state must produce an observed lifecycle change within five seconds. Otherwise Herdr returns `agent_prompt_stalled` instead of waiting indefinitely. This wait tracks lifecycle state, not an individual turn; if the agent is already working, completion of the active turn may satisfy it.
+With `--wait`, a prompt sent from a non-working state must produce observed `working` or `blocked` activity. After submission, Herdr waits up to five seconds for that activity; unrelated `idle`, `done`, or session changes do not satisfy this gate. It returns `agent_prompt_stalled` if no activity is observed, or `timeout` if the caller's timeout expires first. The caller timeout includes submission time. Without a timeout, the settled-state wait is indefinite after activity is observed. This wait tracks lifecycle state, not an individual turn; if the agent is already working, completion of the active turn may satisfy it.
 
 Use `--until` only for a state-specific workflow, such as waiting for an already-running agent to request input:
 
@@ -156,7 +178,7 @@ herdr agent get reviewer
 herdr agent read reviewer --source recent-unwrapped --lines 120
 ```
 
-If a wait fails or returns `blocked`, inspect `agent get` and `agent read` before deciding what input to send. Use the pane surface only when raw terminal control is intentional.
+If a wait fails or returns `blocked`, inspect `agent get` and `agent read` before deciding what input to send. A timeout or stalled response does not prove the prompt was never delivered; do not blindly submit it again. Use the pane surface only when raw terminal control is intentional.
 
 ## Run an ordinary command in another pane
 
@@ -185,102 +207,28 @@ Use the read source that matches the task:
 
 Use `--format ansi` when colors and terminal styling are evidence. Otherwise use text.
 
-`--lines` asks Herdr for more rows from the pane's available screen and host scrollback. If increasing it does not reveal more of a completed response, the pane is probably running the agent on the terminal's alternate screen. Rows that leave the alternate screen do not enter Herdr's host scrollback, so a larger line count cannot recover them.
+`--lines` asks Herdr for more rows from the pane's available screen and host scrollback. Alternate-screen rows do not enter ordinary host scrollback. For supported idle agents, Herdr can collect application-owned history and restore the viewport afterward, but not every application or response can be recovered this way.
 
-After that failed read, ask the agent to write its complete response as Markdown in a temporary directory and reply only with the file path, then read the file directly. Use this only as a fallback; do not request file output in the initial prompt.
-
-## Herdr Browser 插件（浏览器 pane）
-
-Herdr Browser 插件在 herdr pane 里渲染真实 Chromium 视图：agent 经 CLI 驱动，用户可鼠标键盘直接接管。本机已安装（官方插件，`herdr plugin list --plugin official.browser --json` 确认 `enabled: true`）。
-
-### 前置条件（本机已配置，勿动）
-
-- `~/.config/herdr/config.toml` 必须有 `[experimental] kitty_graphics = true`
-- 依赖 bun + Google Chrome（本机已具备）
-
-### 打开浏览器 pane（唯一正确方式）
-
-```bash
-herdr plugin pane open --plugin official.browser --entrypoint browser \
-  --placement split --direction right \
-  --env HERDR_BROWSER_INITIAL_URL=https://example.com --focus
-```
-
-- `--placement`：`split` / `tab` / `zoomed` / `overlay`
-- `--env HERDR_BROWSER_INITIAL_URL=...` 可选，启动即导航到该 URL
-- ⚠️ **禁止**用 `herdr pane split` + `herdr pane run <pane> "bun run src/viewer.ts"` 手动启动：不走插件机制时图形流不会建立（metrics 中 `graphics_stream.active: false`、`frames: 0`），用户看不到图像、顶栏卡在 about:blank。已实测踩坑。
-
-### agent 驱动 CLI
-
-插件不装全局命令，在插件根目录用 bun 运行（根目录：`~/.config/herdr/plugins/github/official.browser-ff2a44eccae9`，可用 `herdr plugin list --plugin official.browser --json` 查 `plugin_root`）：
-
-```bash
-BROWSER=~/.config/herdr/plugins/github/official.browser-ff2a44eccae9
-bun run $BROWSER/src/cli.ts open https://example.com    # 导航（等待加载完成，返回标题）
-bun run $BROWSER/src/cli.ts text                        # 读页面可见文字
-bun run $BROWSER/src/cli.ts eval '<js>'                 # 执行 JS 表达式，返回 JSON（DOM 检查/点击）
-bun run $BROWSER/src/cli.ts type <selector> <text>      # 填表单
-bun run $BROWSER/src/cli.ts click <x> <y>               # 坐标点击
-bun run $BROWSER/src/cli.ts selector-click <selector>   # 按 CSS 选择器点击
-bun run $BROWSER/src/cli.ts wait '<js>' [timeoutMs]
-bun run $BROWSER/src/cli.ts screenshot --output /tmp/x.png
-bun run $BROWSER/src/cli.ts views | tabs | switch-tab <id>
-bun run $BROWSER/src/cli.ts metrics                     # 诊断：graphics_stream.active 应为 true
-bun run $BROWSER/src/cli.ts status | stop
-```
-
-daemon 由插件自动管理（state：`~/.local/state/herdr/plugins/official.browser/daemon.json`），无需手动 override 环境变量；`stop` 后下次打开自动重启。
-
-### 登录/表单自动化流程（实测）
-
-1. `open <url>` 导航
-2. `eval` 找入口——按钮常是图标按钮，按 aria-label/title 匹配：
-   `[...document.querySelectorAll("button")].map(b => ({label: b.getAttribute("aria-label"), text: (b.textContent||"").trim()}))`
-3. 无 selector 可点的按钮直接在 eval 里 `el.click()`
-4. `type <selector> <text>` 填用户名/密码，eval 或 `selector-click` 提交
-5. `text` / `eval` 验证登录态（菜单出现"退出登录"、页面显示账号即成功）
-
-### 排障
-
-- 用户看不到图像 → `metrics` 查 `graphics_stream.active`；为 false 说明启动方式错误或 kitty_graphics 未开
-- 顶栏 URL 卡住不更新 → viewer 未正确初始化，重开插件 pane
-- 页面内容用 `text` / `eval` 读，不要用 `pane read`（图形帧不进终端文本缓冲）
-- 浏览器 pane 是交互程序：`pane run` 发文本会被它当作键盘输入吞掉，不要往浏览器 pane 发命令
+If a larger recent read still does not reveal the completed response, ask the agent to write it as Markdown in a temporary directory and reply only with the file path, then read that file on the same machine. Use this only as a fallback; do not request file output in the initial prompt.
 
 ## Safety and coordination rules
 
 - Use `--no-focus` for background work unless the user asked to switch context.
 - Use `--current`, an explicit pane ID, or a unique agent name. Do not rely on another client's focused pane.
 - Parse IDs from JSON responses. Do not derive them from sidebar order or examples.
-- Do not close workspaces, tabs, panes, or sessions you did not create unless the user explicitly asked.
+- Do not close workspaces, tabs, panes, or sessions you did not create unless the user explicitly asked. `workspace close --group` closes the primary workspace and its linked worktree workspaces; never add it merely to bypass `workspace_group_close_required`.
+- Use `--trust-repository` only after the user has verified the repository. It grants per-request Git trust; it is not a routine retry for a failed worktree command.
+- Client and server versions can differ after an update. Check `herdr status` before relying on new server features. A missing method is not permission to stop or upgrade a server.
 - Never run `herdr server stop` from an active session unless the user explicitly intends to stop the server and its pane processes.
 - Never kill the main Herdr process. Use named test sessions for experiments that need an isolated server.
 - CLI server errors are JSON on stderr with exit status 1. CLI syntax errors exit with status 2.
 
-## 多 panel 编排实战（2026-08-10 实测）
 
-多顾问并行场景：一个 pane 跑 omp 主会话，另开两个 pane 跑别的 agent（agy、pi 等），几个 agent 收同一份提示词。完整流程：
+---
 
-1. **退出 pane 内已有 omp 会话**：`herdr pane send-keys <pane> ctrl+d`（EOF 直接退 TUI 回 shell；会话可 `omp --resume <id>` 恢复，退出前 read visible 记下 resume id）。
-2. **第二个 agent**：`herdr agent start <name> --kind <kind> --pane <pane-id> -- <启动参数>`。各 kind 的交互细节见下方 References 对应笔记（agy、pi 已实测）。
-3. **agy CLI**：`herdr agent start <name> --kind agy --pane <pane-id> -- --dangerously-skip-permissions`。首次启动可能卡账号资格验证（"Verifying your account... please try again shortly"）——ctrl+c 两次退出后重启即过；验证横幅期间 prompt 会静默丢失。见 `references/agy-interaction.md`。
-4. **第三 pane 布局**：`herdr pane split --pane <id> --direction down --no-focus`（split 只支持 right/down；无 tab 级分栏）。**先建好布局再发 prompt**——运行中 split 会 resize 已有 agent 的 TUI。
-5. **共享提示词**：写一份 prompt 文件（`local://advice-prompt.md`），`herdr agent prompt <name> "$(cat <绝对路径>)" --wait` 后**无条件补 `send-keys <name> enter`**（对 pi 等 kind 必须；agy 无害）。
-6. **收尾取全文**：`agent get` 看状态、`agent read --source recent-unwrapped` 取回复。⚠️ 长输出（尤其 swarm/子代理模式）常渲染在 alternate screen，`recent-unwrapped` 只能拿到可见部分（出现 `ctrl+o to expand` 提示）——分多段 `--lines` 读或让它把完整回复写文件。
-7. **退出 agent（2026-08-10 实测）**：
-   - omp：`pane send-keys <pane> ctrl+d`（EOF 直退，会话 `omp --resume <id>` 恢复）
-   - agy：`agent send-keys ctrl+c` **两次**（第一次进 "press ctrl+c again to exit" 确认态，第二次退出）；重启要在 pane 回 shell（`❯`）后进行，否则 `agent start` 报 exit 5
-8. **关闭 panel**：`herdr pane close <pane-id>`（agent 已退出后直接关；未退时先按第 7 条退出）。清场顺序：退出 agents → close panes → 主 omp 最后 Ctrl+D。
-9. **多轮复用**：agent pane 保持运行，多轮 `prompt + send-keys enter` 复用同一会话（上下文累积），无需重启。每轮 `prompt --wait` 在 12-15s 超时返回 timeout 错误是**正常现象**（文本已发出，补 enter 即提交），不是失败。
-10. **等待时长预期**（`agent wait --timeout 300000`）：agy（Gemini Flash）5-20s 完成；后台 task 型顾问（老刀/Kimi）1-4 分钟——多路并行时先等快的收结果，慢的用 `agent wait` 阻塞。
+## 本机实战笔记（2026-09-22 踩坑后追加，与官方内容冲突时以官方为准）
 
-## Pi (pi CLI) 交互实战（2026-08-28 实测）
-
-Pi 是独立 coding agent CLI（会话存 `~/.pi/agent/sessions/`），与 omp 配置体系完全分开。模型 id 踩坑（ollama-cloud 库内注册 id 是 `kimi-k3` **不带 `:cloud` 后缀**；omp 与 pi 凭据/模型配置互不相通）、角色提示词必须完整发送（角色+数据一个文件一次发出）、三种退出方式（`/quit` 最干净；`/exit` 不是退出命令）、`--kind pi` 对已运行实例补注册名字、与 omp subagent 双通道深浅对照——详见 `references/pi-interaction.md`。
-
-## References
-
-- `references/pi-interaction.md` — Pi (pi CLI) 交互实战（2026-08-28）：模型 id 踩坑（`kimi-k3` 不带 `:cloud`；omp/pi 配置互不相通）、角色+数据提示词完整发送、三种退出方式、`--kind pi` 补注册、双通道深浅对照。与 pi kind 交互前必读。
-- `references/agy-interaction.md` — agy（Antigravity CLI）交互实战：账号资格验证卡死与重启修复、prompt 流程、`--dangerously-skip-permissions`、发送通道陷阱（`pane run` 勿用于 TUI）。与 agy kind 交互前必读。
-- `references/mcp-config.md` — MCP 项目级配置实战（2026-08-16）：agy 用 `.agents/mcp_config.json`（`serverUrl`），beaver-zotero 实例、端点探测 curl、重启生效、`/mcp` 验证法。给 pane 内 agent 装 MCP 前必读。
-
+1. **`agent prompt` 的等待参数**：`--wait --timeout <毫秒>`（官方示例 120000 = 120s）。**无 timeout 时 settled-state 等待无限期**——曾挂死到外层 bash 超时被强断，误判为 herdr 故障。`--until` 只用于特定状态流（如 `agent wait <name> --until blocked`），与 `--wait` 连用属反模式（官方明说不必重复默认值）。
+2. **timeout/中断 ≠ prompt 未送达**：官方原话「A timeout or stalled response does not prove the prompt was never delivered; do not blindly submit it again」。续接方式：`herdr agent wait <name> --timeout 60000` 分段阻塞等待（每次正常返回，可循环），期间可用 `herdr agent read <name> --source recent-unwrapped --lines N` 读中间输出。
+3. **读 agent 输出优先 `herdr agent read <name>`**（按 agent 名），比 `herdr pane read <pane-id>` 语义更贴切；读转录用 `--source recent-unwrapped`。
+4. **`pane split` 加 `--cwd "$PWD" --no-focus`**：保留调用方工作目录、不抢用户焦点（官方建议，本机曾漏加导致焦点被切走）。
