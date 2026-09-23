@@ -17,6 +17,11 @@
 - 搜索优先内置 `grep` / `find` 工具(一次调用支持多词 OR);内置工具覆盖不了的操作才走 bash
 - 定位后用 `read` 的 `offset`/`limit` 只读命中附近;工作区外已知文件直接 `read` 绝对路径
 
+## herdr（终端多 agent 并行）
+
+- **动手用 herdr 前（派发 agent / 轮询状态 / 开关 panel）先去它 skill 的 `references/` 查本机实战经验**：`~/.pi/agent/skills/herdr/references/agent-dispatch.md`（派发节奏、状态语义、坑单）、`pi-interaction.md`（跑 pi）、`agy-interaction.md`（跑 agy）、`mcp-config.md`。官方 `SKILL.md` 只给命令契约，**保持不改**（随时可用 `herdr --skill` 刷新）。
+- 两条最容易踩的：**派发 `agent prompt` 不加 `--wait`**（会卡住当前会话）；回头用 `herdr agent list` 轮询（`done`=干完未看、`blocked`=在等你回话）。
+
 ## 外部检索(GitHub)
 
 - `gh` 与 pi-web-access 分工：**检索走 gh、深读走 fetch_content**；gh 已装（Homebrew `/opt/homebrew/bin/gh`，无需重装）
