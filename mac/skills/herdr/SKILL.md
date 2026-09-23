@@ -7,7 +7,7 @@ disable-model-invocation: true
 > **真源**：`~/Documents/github/dotfiles/mac/skills/herdr`（共享 skill）。由 `install.sh` 目录级 symlink 部署到 `~/.pi/agent/skills/herdr`；改这个目录即改部署，**不要另建副本**。
 > `disable-model-invocation: true` 是 pi 的「只许手动调用」开关（见 pi docs/skills.md），用来把描述里那句「仅在用户明确提到 Herdr 时才用」变成机制保证，而不是靠模型自觉。
 > **本文件同步自 `herdr --skill`（2026-09-22，herdr 当前安装版输出）**；官方内容更新时重跑 `herdr --skill > 正文` 再拼装本头。
-> **本机经验一律记 `references/`**（不改官方正文）：`agent-dispatch.md` 派发与状态轮询、`pi-interaction.md` 跑 pi、`agy-interaction.md` 跑 agy、`mcp-config.md` MCP 配置。
+> **本机经验一律记 `references/`**（不改官方正文）；**动手用 herdr 前（派发 agent / 轮询状态 / 开关 panel）先去 `references/` 查本机实战经验**：`agent-dispatch.md` 派发与状态轮询、`pi-interaction.md` 跑 pi、`agy-interaction.md` 跑 agy、`mcp-config.md` MCP 配置。
 
 ---
 name: herdr
