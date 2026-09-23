@@ -7,6 +7,7 @@ disable-model-invocation: true
 > **真源**：`~/Documents/github/dotfiles/mac/skills/herdr`（共享 skill）。由 `install.sh` 目录级 symlink 部署到 `~/.pi/agent/skills/herdr`；改这个目录即改部署，**不要另建副本**。
 > `disable-model-invocation: true` 是 pi 的「只许手动调用」开关（见 pi docs/skills.md），用来把描述里那句「仅在用户明确提到 Herdr 时才用」变成机制保证，而不是靠模型自觉。
 > **本文件同步自 `herdr --skill`（2026-09-22，herdr 当前安装版输出）**；官方内容更新时重跑 `herdr --skill > 正文` 再拼装本头。
+> **本机经验一律记 `references/`**（不改官方正文）：`agent-dispatch.md` 派发与状态轮询、`pi-interaction.md` 跑 pi、`agy-interaction.md` 跑 agy、`mcp-config.md` MCP 配置。
 
 ---
 name: herdr
@@ -223,12 +224,3 @@ If a larger recent read still does not reveal the completed response, ask the ag
 - Never kill the main Herdr process. Use named test sessions for experiments that need an isolated server.
 - CLI server errors are JSON on stderr with exit status 1. CLI syntax errors exit with status 2.
 
-
----
-
-## 本机实战笔记（2026-09-22 踩坑后追加，与官方内容冲突时以官方为准）
-
-1. **`agent prompt` 的等待参数**：`--wait --timeout <毫秒>`（官方示例 120000 = 120s）。**无 timeout 时 settled-state 等待无限期**——曾挂死到外层 bash 超时被强断，误判为 herdr 故障。`--until` 只用于特定状态流（如 `agent wait <name> --until blocked`），与 `--wait` 连用属反模式（官方明说不必重复默认值）。
-2. **timeout/中断 ≠ prompt 未送达**：官方原话「A timeout or stalled response does not prove the prompt was never delivered; do not blindly submit it again」。续接方式：`herdr agent wait <name> --timeout 60000` 分段阻塞等待（每次正常返回，可循环），期间可用 `herdr agent read <name> --source recent-unwrapped --lines N` 读中间输出。
-3. **读 agent 输出优先 `herdr agent read <name>`**（按 agent 名），比 `herdr pane read <pane-id>` 语义更贴切；读转录用 `--source recent-unwrapped`。
-4. **`pane split` 加 `--cwd "$PWD" --no-focus`**：保留调用方工作目录、不抢用户焦点（官方建议，本机曾漏加导致焦点被切走）。
