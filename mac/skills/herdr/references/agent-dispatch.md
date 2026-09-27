@@ -37,7 +37,12 @@ herdr agent wait <name> --timeout 300000                          # 仅当必须
 
 ## 坑单
 
-1. **不要用 `--wait` 派发，也不要无限期 `agent wait`**。官方语义是「等第一个 settled 状态（idle/done/blocked）」，**无 timeout 时无限期**；调用方（主会话）的 bash 是同步的，等一个子会话 = 主会话停摆。2026-09-23 实测：派完再 `agent wait --timeout 360000`，白等 6 分钟。
+1. **`agent prompt --wait --timeout N` —— ✅ 可用（2026-09-27 修正，推翻旧结论）**
+   实测 3 次（同日，herdr 当前版）：任务 1「回个 OK」耗时 26.5s · 任务 3「跑 `just check --regress`」耗时 **15s**、返回时状态 `done` **且输出含检查结果** → **它等的是真 settled，不是「看到活动就返回」**。
+   ⚠️ **两个边界**：① **必须带 `--timeout`**（无 timeout = 无限期，主会话 bash 同步 → 停摆）；② 它只保证「settled」，**不保证任务成功** → 仍要 `agent read` 核证据（任务 2 耗时 6s，看似提前返回，实为子会话没真跑那件事——`--wait` 不背这个锅）。
+   📌 **历史修正**：2026-09-23 记的「派完 `agent wait --timeout 360000` 白等 6 分钟」疑为**误用**（官方语义 = 等**第一个 settled 状态**；若对象已 settled，就会白等或立即返回）。据那一次写成「不要用」**过宽**。
+   ✅ **当前推荐**：**短任务**（< 2 分钟）用 `herdr agent prompt <target> "..." --wait --timeout 120000`（省掉 sleep 轮询）；**长任务**仍用 `sleep N && agent list` 轮询（避免长时间占住主会话 bash）。
+   📖 官方补充（`herdr --skill`，214 行，2026-09-27 核对仍是 09-22 版）：`--wait` 会有 **5 秒 activity gate** —— 从非 working 状态发 prompt 必须观察到 `working`/`blocked` 活动，否则返回 `agent_prompt_stalled`。
 2. `--until` 与 `--wait` 连用属反模式（官方明说不必重复默认值）；`--until` 只用于"等某特定状态"的流程（如 `agent wait X --until blocked`）。
 3. `agent prompt` 返回 `agent_prompted` **只代表已送达**，不代表已开工；要确认开工看 `agent list` 是否 `working`。
 4. **超时/中断 ≠ 未送达**（官方原话：a timeout or stalled response does not prove the prompt was never delivered; do not blindly submit it again）→ 先 `agent read` 看它干到哪了，别重复投递整份任务书。
