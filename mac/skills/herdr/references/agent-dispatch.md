@@ -1,4 +1,4 @@
-# agent 派发与状态轮询（本机实战，2026-09-23）
+# agent 派发与状态轮询（本机实战，2026-09-23 起；2026-09-28 补轮询间隔推荐）
 
 在 herdr 里**派子 agent 干活**这件事的本机口径与坑。命令语义真源仍是官方 `SKILL.md` 与 `herdr agent` / `herdr pane` 的输出；本文只记"怎么用不出错"。
 
@@ -43,6 +43,11 @@ herdr agent wait <name> --timeout 300000                          # 仅当必须
    📌 **历史修正**：2026-09-23 记的「派完 `agent wait --timeout 360000` 白等 6 分钟」疑为**误用**（官方语义 = 等**第一个 settled 状态**；若对象已 settled，就会白等或立即返回）。据那一次写成「不要用」**过宽**。
    ✅ **当前推荐（遵循官方）**：**就用 `agent prompt <target> "..." --wait --timeout N`** —— 官方示例即 `--wait --timeout 120000`；**短任务 2 分钟，长任务把 timeout 调大**（官方明说「Without a timeout, the settled-state wait is indefinite」→ 带 timeout 就受它约束，**不是「长任务不能用」**）。
    ⚠️ **唯一属于本机的策略（非官方限制）**：若我需要在等待期间**同时干别的活** → 改用 `sleep N && agent list` 轮询（因为主会话 bash 是同步的，「等」= 我在那儿干等着）。
+   📌 **轮询间隔推荐 15-20 秒**（2026-09-28 本机实测）：`sleep 15 && herdr agent list`（或 20 秒）。三档理由：
+      - **< 10 秒**：子会话常还在启动/读上下文（`agent list` 只见 `working`、甚至尚未切入），空轮询浪费调用；
+      - **15-20 秒**：与子会话典型动作粒度（读一群文件 / 跑一条命令）匹配，状态变化能被及时捕捉，又不至于密集；
+      - **> 30 秒**：可能错过 `blocked`（它在等你回话）—— 而 **blocked 是唯一需要立刻响应**的状态，错过就白等。
+      - 按任务长短调：长任务（review / 审计，5-20 分钟）用 20 秒；短任务（< 1 分钟）用 10-15 秒；**首次轮询前多等一拍**（子会话冷启动约 10-20 秒才真正切 `working`）。
    📖 **官方三条易漏语义**（`herdr --skill` 原文）：① “**This wait tracks lifecycle state, not an individual turn**; if the agent is already working, **completion of the active turn may satisfy it**” → **别在 agent 正在 working 时投新任务**（会被上一轮完成提前满足）；② “**Without a timeout, the settled-state wait is indefinite**” → 必须带 timeout；③ “The caller timeout **includes submission time**”。
    📖 官方补充（`herdr --skill`，214 行，2026-09-27 核对仍是 09-22 版）：`--wait` 会有 **5 秒 activity gate** —— 从非 working 状态发 prompt 必须观察到 `working`/`blocked` 活动，否则返回 `agent_prompt_stalled`。
 2. `--until` 与 `--wait` 连用属反模式（官方明说不必重复默认值）；`--until` 只用于"等某特定状态"的流程（如 `agent wait X --until blocked`）。
