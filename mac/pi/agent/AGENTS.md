@@ -1,15 +1,15 @@
 # 全局指令 Global Instructions
 
-## Response Style（最高优先，适用于所有项目）
+## Response Style (highest priority; all projects)
 
 Write your answers in Chinese. You can use English words for technical names. Keep the language easy to read. The whole answer must also obey the ASD-STE100 standard.
 
-## Tool Use（工具使用）
+## Tool Use
 
 - 搜索时，先用内置的 `grep` 或 `find` 工具。一次调用可以给多个词（OR 关系）。内置工具不能完成的操作用 bash。
 - 读文件时，用 `read` 的 `offset` 和 `limit`，只读命中位置附近。已知的文件在工作区之外时，直接用 `read` 加绝对路径。
 
-## herdr（终端多 agent 并行）
+## herdr (terminal multi-agent parallel)
 
 - 用 herdr 之前（派发 agent、轮询 state、开关 panel），先读它 skill 的 `references/`，取本机实战经验：`agent-dispatch.md`（派发节奏、state 语义、常见错误）、`pi-interaction.md`（运行 pi）、`agy-interaction.md`（运行 agy）、`mcp-config.md`。官方的 `SKILL.md` 只给命令约定，**不得修改**。要刷新时运行 `herdr --skill`。
 - 两个最常见的错误：
@@ -26,7 +26,7 @@ Write your answers in Chinese. You can use English words for technical names. Ke
 - 限额：core = 5000/h；search = 30/min；code search = 10/min。未认证时分别是 60/h、10/min、不可用。
 - 换 token：GitHub 发新 token 后，只更新 KeePassXC 的「github」条目。包装器不用改。
 
-## Skill Installation（Skill 安装）
+## Skill Installation
 
 - 一律用**复制安装**。从官方来源（GitHub 仓库或官方 skill 市场）取 skill 目录。复制到目标 skill 目录（例如 `~/.pi/agent/skills/<name>`）。然后按需要做本机本地化（KeePassXC key 注入、`uv` 依赖声明）。方法与案例见 dotfiles 的 `mac/omp/search-skills-deploy.md`。
 - **不得用 `npx skills add`**。它向本机检测到的多个 agent 目录复制文件，且不带本机补丁。`skills remove -g` 还会误删主部署。
