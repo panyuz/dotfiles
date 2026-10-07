@@ -1,44 +1,86 @@
-# MCP 配置实战笔记（2026-08-16 实测：agy，项目级安装）
+# MCP 配置实战笔记（2026-10-07 复核到 agy 1.3.0）
 
-> 场景：为 herdr pane 内的 agy（Antigravity CLI）接入 beaver-zotero MCP
-> （Zotero 文献库，HTTP 端点 `http://localhost:23119/beaver/mcp`，Beaver 插件内嵌）。
-> 结论先行：**一律装项目级，不装全局**（用户明确要求）。
+> 场景：为 herdr pane 内的 agy（Antigravity CLI）接入 MCP。首个案例是 beaver-zotero（Zotero 文献库，HTTP 端点 `http://localhost:23119/beaver/mcp`，Beaver 插件内嵌）。
+> 口径（2026-10-07 更新）：**能项目级就项目级**。但 agy 的项目级载体是**插件**，不是裸的 `mcp_config.json`。
 
-## 通用要点
+## 官方只认两处
 
-- beaver-zotero 是 Streamable HTTP MCP（protocolVersion 2024-11-05），agy 原生支持
-- 端点探测：`curl -X POST http://localhost:23119/beaver/mcp -H "Content-Type: application/json" -H "Accept: application/json, text/event-stream" -d '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"probe","version":"1.0"}}}'`
-- 配置后**必须重启 agent 会话**才生效（新会话加载 MCP；运行中会话不注册新增 server）
+| 层级 | 路径 | 出处 |
+|---|---|---|
+| 全局 | `~/.gemini/config/mcp_config.json` | 官方 MCP 页，加 agy 1.3.0 自带文档 |
+| 插件（项目级用这个） | `<仓库>/.agents/plugins/<名字>/mcp_config.json` | 官方 plugins 页：工作区插件放 `.agents/plugins/` |
 
-## agy（Antigravity CLI 1.1.13）
-
-### 配置位置
-
-- 全局：`~/.gemini/config/mcp_config.json`（不推荐，用户要求项目级）
-- **项目级：`.agents/mcp_config.json`**（工作区根目录；旧版 `.antigravitycli/mcp_config.json` 有 bug 会被忽略，见 google-antigravity/antigravity-cli issue #60）
-- 远程连接用 **`serverUrl`** 字段（Streamable HTTP / SSE）；legacy 的 `url`/`httpUrl` 不支持
-- 官方文档：https://antigravity.google/docs/mcp ；本机 agy 自带：`~/.gemini/antigravity-cli/builtin/skills/agy-customizations/docs/mcp_servers.md`
-
-### 配置内容（beaver-zotero 实测）
+工作区插件还要一个 `plugin.json`。CLI 下 `name` 字段必须有：
 
 ```json
-{
-  "mcpServers": {
-    "beaver-zotero": {
-      "serverUrl": "http://localhost:23119/beaver/mcp"
-    }
-  }
-}
+{ "$schema": "https://antigravity.google/schemas/v1/plugin.json", "name": "writing-mcp" }
 ```
 
-### 验证
+### 旧写法：别依赖
 
-1. 重启 agy（退出 ctrl+c ×2 → 回 shell → `herdr agent start`）
-2. 在 agy 内打开 MCP Manager：`herdr pane send-text <pane> "/mcp"` + `herdr pane send-keys <pane> enter`
-3. 界面显示 `✓ beaver-zotero  Tools: search_by_topic, search_by_metadata, ...` 即成功；enter 进 Actions（Restart/Disable），esc 退出
+- `<仓库>/.antigravitycli/mcp_config.json`：agy 1.0 会读文件名，但**静默忽略** `mcpServers`（issue #60，仍 open）。
+- `<仓库>/.agents/mcp_config.json`：社区变通。本机 1.1.13 实测可用；有人在 1.1.3 报回归（HOME 有配置时只加载 HOME）。1.3.0 自带文档没有这条路。
+- 结论：先用插件。要用旧写法，先实测再信。
 
-### 陷阱
+## 字段（agy 侧）
 
-- agy 启动时会自动创建**空的全局** `~/.gemini/config/mcp_config.json`（0 字节占位，无 server 定义，无害）——不要误以为全局配置被写回
-- MCP 工具调用在输出中显示为 `● beaver-zotero/search_by_metadata(...)` 步骤行，可据此核查 agent 是否真的用了 MCP
-- agy 的全局配置里没有 beaver-zotero 定义，是正常的（**一律项目级**）；全局那个空占位文件勿删勿慌
+| 字段 | 说明 |
+|---|---|
+| `command` / `args` / `env` / `cwd` | stdio 传输 |
+| `serverUrl` | 远程。官方页用这个键；1.3.0 自带文档写 `url`，并说 `serverUrl` 也兼容。两个都认 |
+| `headers` | 远程的 HTTP 头。只收**字面值**。没有 pi 的 `!command` 与 `${VAR}` 取值 |
+| `disabled` | 停用而不删。注意 pi 叫 `enabled`，名字与语义都相反 |
+| `disabledTools` | 把指定工具藏起来（只做减法） |
+| `oauth` / `authProviderType` | OAuth 客户端；`google_credentials` 走 ADC |
+
+## agy 的 MCP 与插件命令
+
+```bash
+agy mcp list                        # 列出生效的 server。在仓库根跑
+agy mcp add|remove|enable|disable   # 只能写全局
+agy plugin validate <插件目录>       # 校验 plugin.json 与 mcp_config.json
+agy plugin list
+```
+
+WARNING：`agy mcp add` **没有 scope 参数**，只写全局。项目级 MCP 必须手写文件。
+
+WARNING：`agy mcp list` 在任意目录都会列出全局配置。**别把它当项目级生效的证据**。要看来路就查日志 `~/.gemini/antigravity-cli/log/cli-*.log`。
+
+`agy plugin validate` 会逐项报进度（2026-10-07 实测输出）：
+
+```
+[ok]    <目录>
+        - skills      : skipped (not found)
+        ✔ mcpServers  : 1 processed
+        - hooks       : skipped (not found)
+```
+
+JSON 写坏会当场报错，例如字符串里混入字面 `\n` 时报 `invalid character '\n' in string`。
+
+## beaver-zotero 端点探测
+
+```bash
+curl -X POST http://localhost:23119/beaver/mcp -H "Content-Type: application/json" \
+  -H "Accept: application/json, text/event-stream" \
+  -d '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"probe","version":"1.0"}}}'
+```
+
+## 验证
+
+1. 写完插件先跑 `agy plugin validate <目录>`。
+2. 重启 agy：退出 ctrl+c ×2 → 回 shell → `herdr agent start`。**配置改动后必须重启会话**。
+3. `agy mcp list`，或在 agy 内 `/mcp` 看 `✓ <名字>  Tools: ...`。
+4. MCP 调用在输出里显示为 `● beaver-zotero/search_by_metadata(...)` 步骤行。用它核查 agent 是否真用了 MCP。
+
+## 陷阱
+
+- agy 启动时会自动创建**空的全局** `~/.gemini/config/mcp_config.json`。不要误以为项目配置被写回，也不要删它。
+- 全局配置在**每个**会话都加载，与项目无关。2026-10-07 本机状态：全局有 `drawio`（stdio）与 `zotseek`（http），两个都 `disabled`。这与最初「一律项目级」的口径不一致，待迁。
+- 远程 server 用 Streamable HTTP 端点（常以 `/mcp` 结尾）。旧的 HTTP+SSE 传输不支持。
+
+## 出处
+
+- 官方 MCP 页：https://antigravity.google/docs/mcp
+- 官方 plugins 页：https://antigravity.google/docs/plugins
+- agy 自带文档：`~/.gemini/antigravity-cli/builtin/skills/agy-customizations/docs/mcp_servers.md`
+- 项目级 MCP 的 bug：https://github.com/google-antigravity/antigravity-cli/issues/60
