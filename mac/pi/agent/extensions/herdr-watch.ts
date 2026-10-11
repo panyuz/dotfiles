@@ -29,7 +29,22 @@
  */
 
 import net from "node:net";
+import fs from "node:fs";
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
+
+// 排障日志（失败不影响主流程）。设 HERDR_WATCH_DEBUG=0 可关。
+const DEBUG = process.env.HERDR_WATCH_DEBUG !== "0";
+const DEBUG_LOG = "/tmp/herdr-watch.log";
+function dbg(msg: string): void {
+	if (!DEBUG) {
+		return;
+	}
+	try {
+		fs.appendFileSync(DEBUG_LOG, `${new Date().toISOString()} ${msg}\n`);
+	} catch {
+		// 日志写不了就算了，不阻塞订阅
+	}
+}
 
 const HERDR_ENV = process.env.HERDR_ENV;
 const SOCKET_PATH = process.env.HERDR_SOCKET_PATH;
@@ -40,8 +55,9 @@ const PUSH_STATES = new Set(["blocked", "done"]);
 // 同一 pane 两次推送之间的最短间隔（毫秒）。
 const COOLDOWN_MS = 8000;
 // 心跳：这么久没有任何推送时，主动提一条（让主模型定期回头看主线）。
+// 2026-10-11 调整：10 分钟太吵（用户 1 小时收到 4+ 次），改 60 分钟。
 // 有推送就不提（静默期才有心跳）。设 0 关闭。
-const HEARTBEAT_MS = 10 * 60 * 1000;
+const HEARTBEAT_MS = 60 * 60 * 1000;
 // 重连退避上限。
 const MAX_BACKOFF_MS = 30000;
 // 每隔多久刷新一次 pane 列表，给新开的 pane 补订阅。
@@ -105,7 +121,10 @@ export default function (pi: ExtensionAPI) {
 		s.setEncoding("utf-8");
 		let buf = "";
 		const done = () => s.destroy();
-		s.on("connect", () => s.write(`${JSON.stringify({ id: `list:${++reqSeq}`, method: "pane.list", params: {} })}\n`));
+		s.on("connect", () => {
+			dbg("list 短连接已连上，发 pane.list");
+			s.write(`${JSON.stringify({ id: `list:${++reqSeq}`, method: "pane.list", params: {} })}\n`);
+		});
 		s.on("data", (chunk: string) => {
 			buf += chunk;
 			let idx: number;
@@ -119,24 +138,30 @@ export default function (pi: ExtensionAPI) {
 					const msg = JSON.parse(line) as any;
 					const panes = msg?.result?.panes;
 					if (Array.isArray(panes)) {
-						subscribeTo(panes.map((p: any) => p?.pane_id).filter((x: unknown) => typeof x === "string"));
+						const ids = panes.map((p: any) => p?.pane_id).filter((x: unknown) => typeof x === "string");
+						dbg(`pane.list 返回 ${ids.length} 个：${ids.join(",")}`);
+						subscribeTo(ids);
 					}
-				} catch {
-					// 忽略解析失败的行
+				} catch (e) {
+					dbg(`list 回复解析失败：${String(e)}`);
 				}
-				void done;
 			}
 		});
-		s.on("error", done);
+		s.on("error", (e) => {
+			dbg(`list 短连接错误：${String(e)}`);
+			done();
+		});
 		s.on("close", done);
 		setTimeout(done, 5000).unref?.();
 	}
 
 	function writeToStream(obj: Record<string, unknown>): void {
 		if (!streamSocket || streamSocket.destroyed) {
+			dbg(`writeToStream 跳过（无流或已销毁）：${JSON.stringify(obj).slice(0, 80)}`);
 			return;
 		}
 		streamSocket.write(`${JSON.stringify(obj)}\n`);
+		dbg(`writeToStream 已写：${JSON.stringify(obj).slice(0, 120)}`);
 	}
 
 	function handleLine(line: string): void {
@@ -213,6 +238,7 @@ export default function (pi: ExtensionAPI) {
 
 		s.on("connect", () => {
 			backoff = 500;
+			dbg("stream 长连接已建立");
 			// 先在短连接上取列表，拿到列表后会在长连接上补订阅。
 			listPanesOnce();
 		});
@@ -230,12 +256,14 @@ export default function (pi: ExtensionAPI) {
 		});
 
 		const drop = () => {
+			dbg("stream 连接关闭/出错 → 安排重连");
 			if (streamSocket === s) {
 				streamSocket = undefined;
 			}
 			s.destroy();
 			scheduleReconnect();
 		};
+		s.on("error", (e) => dbg(`stream 错误：${String(e)}`));
 		s.on("error", drop);
 		s.on("close", drop);
 	}
