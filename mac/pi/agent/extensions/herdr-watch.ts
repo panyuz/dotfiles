@@ -49,6 +49,8 @@ function dbg(msg: string): void {
 const HERDR_ENV = process.env.HERDR_ENV;
 const SOCKET_PATH = process.env.HERDR_SOCKET_PATH;
 const MY_PANE = process.env.HERDR_PANE_ID;
+// 本 pane 的工作目录。只订阅同目录的 agent，避免被别的项目的 pane 唤醒。
+const MY_CWD = process.env.HERDR_CWD || process.env.PWD || process.cwd();
 
 // 推送这两种状态。done = 干完还没被看过；blocked = 在等人回话。
 const PUSH_STATES = new Set(["blocked", "done"]);
@@ -94,8 +96,13 @@ export default function (pi: ExtensionAPI) {
 		streamSocket.write(`${JSON.stringify({ id, method, params })}\n`);
 	}
 
-	function subscribeTo(panes: string[]): void {
-		const fresh = panes.filter((p) => p && p !== MY_PANE && !subscribed.has(p));
+	function subscribeTo(panes: { pane_id: string; cwd?: string }[]): void {
+		// 只订阅「与本 pane 同一个 cwd」的 agent：避免被别的项目（例如 comtools）唤醒。
+		// MY_CWD 由 pi 进程的 cwd 给出；无 cwd 信息的 pane 跳过。
+		const fresh = panes
+			.filter((p) => p?.pane_id && p.pane_id !== MY_PANE && !subscribed.has(p.pane_id))
+			.filter((p) => !MY_CWD || p.cwd === MY_CWD)
+			.map((p) => p.pane_id);
 		if (fresh.length === 0) {
 			return;
 		}
@@ -138,9 +145,11 @@ export default function (pi: ExtensionAPI) {
 					const msg = JSON.parse(line) as any;
 					const panes = msg?.result?.panes;
 					if (Array.isArray(panes)) {
-						const ids = panes.map((p: any) => p?.pane_id).filter((x: unknown) => typeof x === "string");
-						dbg(`pane.list 返回 ${ids.length} 个：${ids.join(",")}`);
-						subscribeTo(ids);
+						const list = panes
+							.filter((p: any) => typeof p?.pane_id === "string")
+							.map((p: any) => ({ pane_id: p.pane_id as string, cwd: p.cwd as string | undefined }));
+						dbg(`pane.list 返回 ${list.length} 个：${list.map((p) => `${p.pane_id}@${(p.cwd || "?").split("/").pop()}`).join(",")}`);
+						subscribeTo(list);
 					}
 				} catch (e) {
 					dbg(`list 回复解析失败：${String(e)}`);
@@ -200,9 +209,9 @@ export default function (pi: ExtensionAPI) {
 			{
 				customType: "herdr-watch",
 				content:
-					`[herdr 推送] ${paneId} ${label}。\n` +
+					`[herdr 推送] ${label}：${paneId}\n` +
 					`看现场：herdr agent read ${paneId} --source visible --lines 40\n` +
-					`继续推主线：herdr pane send-text ${paneId} "<你的指示>" 然后 herdr pane send-keys ${paneId} enter（pi 要补一次 enter）`,
+					`它是本项目的 agent。按需回复：herdr pane send-text ${paneId} "<指示>" 然后 herdr pane send-keys ${paneId} enter（pi 要补一次 enter）`,
 				display: true,
 				details: { paneId, status, at: new Date(now).toISOString() },
 			},
