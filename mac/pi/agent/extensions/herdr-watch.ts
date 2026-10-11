@@ -65,8 +65,29 @@ const MAX_BACKOFF_MS = 30000;
 // 每隔多久刷新一次 pane 列表，给新开的 pane 补订阅。
 const REFRESH_MS = 60000;
 
+// 监控名单文件：只有名单里的 pane 才做监控。
+// 本扩展装在全局扩展目录，每个 pi 会话都会加载它。若不做区分，同一项目的每个面板都会
+// 收到推送（例如 agent 面板被唤醒去处理别的 agent 的事件），造成互相唤醒。
+// 名单一行一个 pane id。文件不存在 = 谁都不监控（安全默认）。
+const WATCH_LIST = "/Users/panyu/.config/herdr/watch-panes";
+
+function listedAsWatcher(): boolean {
+	try {
+		if (!MY_PANE) {
+			return false;
+		}
+		if (!fs.existsSync(WATCH_LIST)) {
+			return false;
+		}
+		const lines = fs.readFileSync(WATCH_LIST, "utf8").split(/\r?\n/);
+		return lines.map((l) => l.trim()).filter(Boolean).includes(MY_PANE);
+	} catch {
+		return false;
+	}
+}
+
 function enabled(): boolean {
-	return HERDR_ENV === "1" && !!SOCKET_PATH && !!MY_PANE;
+	return HERDR_ENV === "1" && !!SOCKET_PATH && !!MY_PANE && listedAsWatcher();
 }
 
 export default function (pi: ExtensionAPI) {
