@@ -12,6 +12,9 @@
  *   - events.subscribe 返回 {"result":{"type":"subscription_started"}}，之后按行推事件
  *   - 订阅 pane.agent_status_changed 必填 pane_id，agent_status 可选（本扩展不限定状态，
  *     收到后自行筛 blocked/done）
+ *   - CAUTION herdr 的连接是请求/响应式的：pane.list 拿到回复后服务端会关连接。
+ *     所以 pane.list 走短连接；events.subscribe 必须另开一条专用的长连接。
+ *     两者放在同一条连接上会拿 BrokenPipeError（实测）。
  *   - 官方文档：herdr docs/socket-api —— 「Use the raw socket API ... for long-lived event subscriptions」
  *
  * 安全边界（重要）：
@@ -50,7 +53,7 @@ export default function (pi: ExtensionAPI) {
 		return;
 	}
 
-	let socket: net.Socket | undefined;
+	let streamSocket: net.Socket | undefined;
 	let closed = false;
 	let backoff = 500;
 	let lineBuf = "";
@@ -62,12 +65,12 @@ export default function (pi: ExtensionAPI) {
 	let reqSeq = 0;
 
 	function request(method: string, params: Record<string, unknown>): void {
-		if (!socket || socket.destroyed) {
+		if (!streamSocket || streamSocket.destroyed) {
 			return;
 		}
 		reqSeq += 1;
 		const id = `watch:${reqSeq}`;
-		socket.write(`${JSON.stringify({ id, method, params })}\n`);
+		streamSocket.write(`${JSON.stringify({ id, method, params })}\n`);
 	}
 
 	function subscribeTo(panes: string[]): void {
@@ -78,9 +81,57 @@ export default function (pi: ExtensionAPI) {
 		for (const p of fresh) {
 			subscribed.add(p);
 		}
-		request("events.subscribe", {
-			subscriptions: fresh.map((pane_id) => ({ type: "pane.agent_status_changed", pane_id })),
+		// 订阅必须在长连接上发（streamSocket）。
+		writeToStream({
+			id: `sub:${++reqSeq}`,
+			method: "events.subscribe",
+			params: {
+				subscriptions: fresh.map((pane_id) => ({ type: "pane.agent_status_changed", pane_id })),
+			},
 		});
+	}
+
+	/** 短连接查一次 pane.list。herdr 的连接是请求/响应式：拿到回复后服务端会关它。 */
+	function listPanesOnce(): void {
+		if (closed) {
+			return;
+		}
+		const s = net.createConnection(SOCKET_PATH!);
+		s.setEncoding("utf-8");
+		let buf = "";
+		const done = () => s.destroy();
+		s.on("connect", () => s.write(`${JSON.stringify({ id: `list:${++reqSeq}`, method: "pane.list", params: {} })}\n`));
+		s.on("data", (chunk: string) => {
+			buf += chunk;
+			let idx: number;
+			while ((idx = buf.indexOf("\n")) >= 0) {
+				const line = buf.slice(0, idx);
+				buf = buf.slice(idx + 1);
+				if (!line.trim()) {
+					continue;
+				}
+				try {
+					const msg = JSON.parse(line) as any;
+					const panes = msg?.result?.panes;
+					if (Array.isArray(panes)) {
+						subscribeTo(panes.map((p: any) => p?.pane_id).filter((x: unknown) => typeof x === "string"));
+					}
+				} catch {
+					// 忽略解析失败的行
+				}
+				void done;
+			}
+		});
+		s.on("error", done);
+		s.on("close", done);
+		setTimeout(done, 5000).unref?.();
+	}
+
+	function writeToStream(obj: Record<string, unknown>): void {
+		if (!streamSocket || streamSocket.destroyed) {
+			return;
+		}
+		streamSocket.write(`${JSON.stringify(obj)}\n`);
 	}
 
 	function handleLine(line: string): void {
@@ -91,14 +142,7 @@ export default function (pi: ExtensionAPI) {
 			return;
 		}
 
-		// pane.list 的回复：给其中的 pane 补订阅。
-		const panes = msg?.result?.panes;
-		if (Array.isArray(panes)) {
-			subscribeTo(panes.map((p: any) => p?.pane_id).filter((x: unknown) => typeof x === "string"));
-			return;
-		}
-
-		// 订阅确认：忽略（只在首次确认时通知一次）。
+		// 订阅确认：忽略。
 		if (msg?.result?.type === "subscription_started") {
 			return;
 		}
@@ -144,26 +188,27 @@ export default function (pi: ExtensionAPI) {
 		}
 		reconnectTimer = setTimeout(() => {
 			reconnectTimer = undefined;
-			connect();
+			connectStream();
 		}, backoff);
 		backoff = Math.min(backoff * 2, MAX_BACKOFF_MS);
 	}
 
-	function connect(): void {
-		if (closed || socket) {
+	/** 长连接：订阅事件并收推送。断线后重连，重连时重新拉列表补订阅。 */
+	function connectStream(): void {
+		if (closed || streamSocket) {
 			return;
 		}
 		subscribed.clear();
 		lineBuf = "";
 
 		const s = net.createConnection(SOCKET_PATH!);
-		socket = s;
+		streamSocket = s;
 		s.setEncoding("utf-8");
 
 		s.on("connect", () => {
 			backoff = 500;
-			// 先拉 pane 列表，回复里会触发补订阅。
-			request("pane.list", {});
+			// 先在短连接上取列表，拿到列表后会在长连接上补订阅。
+			listPanesOnce();
 		});
 
 		s.on("data", (chunk: string) => {
@@ -179,8 +224,8 @@ export default function (pi: ExtensionAPI) {
 		});
 
 		const drop = () => {
-			if (socket === s) {
-				socket = undefined;
+			if (streamSocket === s) {
+				streamSocket = undefined;
 			}
 			s.destroy();
 			scheduleReconnect();
@@ -195,11 +240,11 @@ export default function (pi: ExtensionAPI) {
 			return;
 		}
 		closed = false;
-		connect();
+		connectStream();
 		refreshTimer = setInterval(() => {
 			// 断线时由重连负责；在线时刷新列表，给新 pane 补订阅。
-			if (socket && !socket.destroyed) {
-				request("pane.list", {});
+			if (streamSocket && !streamSocket.destroyed) {
+				listPanesOnce();
 			}
 		}, REFRESH_MS);
 		refreshTimer.unref?.();
@@ -219,7 +264,7 @@ export default function (pi: ExtensionAPI) {
 			clearTimeout(reconnectTimer);
 			reconnectTimer = undefined;
 		}
-		socket?.destroy();
-		socket = undefined;
+		streamSocket?.destroy();
+		streamSocket = undefined;
 	});
 }
