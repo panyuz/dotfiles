@@ -39,6 +39,9 @@ const MY_PANE = process.env.HERDR_PANE_ID;
 const PUSH_STATES = new Set(["blocked", "done"]);
 // 同一 pane 两次推送之间的最短间隔（毫秒）。
 const COOLDOWN_MS = 8000;
+// 心跳：这么久没有任何推送时，主动提一条（让主模型定期回头看主线）。
+// 有推送就不提（静默期才有心跳）。设 0 关闭。
+const HEARTBEAT_MS = 10 * 60 * 1000;
 // 重连退避上限。
 const MAX_BACKOFF_MS = 30000;
 // 每隔多久刷新一次 pane 列表，给新开的 pane 补订阅。
@@ -60,6 +63,8 @@ export default function (pi: ExtensionAPI) {
 	let pendingPanes: string[] = [];
 	const subscribed = new Set<string>();
 	const lastPushAt = new Map<string, number>();
+	let lastAnyPushAt = 0;
+	let heartbeatTimer: ReturnType<typeof setInterval> | undefined;
 	let refreshTimer: ReturnType<typeof setInterval> | undefined;
 	let reconnectTimer: ReturnType<typeof setTimeout> | undefined;
 	let reqSeq = 0;
@@ -163,6 +168,7 @@ export default function (pi: ExtensionAPI) {
 			return;
 		}
 		lastPushAt.set(paneId, now);
+		lastAnyPushAt = now;
 
 		const label = status === "blocked" ? "在等你回话（blocked）" : "干完了（done）";
 		pi.sendMessage(
@@ -240,6 +246,7 @@ export default function (pi: ExtensionAPI) {
 			return;
 		}
 		closed = false;
+		lastAnyPushAt = Date.now();
 		connectStream();
 		refreshTimer = setInterval(() => {
 			// 断线时由重连负责；在线时刷新列表，给新 pane 补订阅。
@@ -248,6 +255,32 @@ export default function (pi: ExtensionAPI) {
 			}
 		}, REFRESH_MS);
 		refreshTimer.unref?.();
+
+		// 心跳：静默期定期提一条，让主模型回头看主线（用户要求「固定时间提醒」）。
+		if (HEARTBEAT_MS > 0) {
+			heartbeatTimer = setInterval(() => {
+				const now = Date.now();
+				if (now - lastAnyPushAt < HEARTBEAT_MS) {
+					return; // 刚刚有推送，不吵
+				}
+				lastAnyPushAt = now;
+				const watched = [...subscribed].sort().join(" ") || "（无）";
+				pi.sendMessage(
+					{
+						customType: "herdr-watch-heartbeat",
+						content:
+							`[herdr-watch 心跳] 已 ${Math.round(HEARTBEAT_MS / 60000)} 分钟无状态变化。` +
+							`当前订阅：${watched}。建议查一次主线：\n` +
+							`  herdr agent list\n` +
+							`  herdr agent read <pane> --source visible --lines 20`,
+						display: true,
+						details: { watched: [...subscribed], at: new Date(now).toISOString() },
+					},
+					{ triggerTurn: true },
+				);
+			}, HEARTBEAT_MS);
+			heartbeatTimer.unref?.();
+		}
 
 		if (ctx.hasUI) {
 			ctx.ui.notify(`herdr-watch：订阅 ${SOCKET_PATH}（排除本 pane ${MY_PANE}）`, "info");
@@ -259,6 +292,10 @@ export default function (pi: ExtensionAPI) {
 		if (refreshTimer) {
 			clearInterval(refreshTimer);
 			refreshTimer = undefined;
+		}
+		if (heartbeatTimer) {
+			clearInterval(heartbeatTimer);
+			heartbeatTimer = undefined;
 		}
 		if (reconnectTimer) {
 			clearTimeout(reconnectTimer);
