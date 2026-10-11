@@ -101,7 +101,8 @@ export default function (pi: ExtensionAPI) {
 		// MY_CWD 由 pi 进程的 cwd 给出；无 cwd 信息的 pane 跳过。
 		const fresh = panes
 			.filter((p) => p?.pane_id && p.pane_id !== MY_PANE && !subscribed.has(p.pane_id))
-			.filter((p) => !MY_CWD || p.cwd === MY_CWD)
+			// 同项目即可：主仓 INVEST 与它的 worktree INVEST-slim 视为同一项目（前缀互含）。
+			.filter((p) => !MY_CWD || !p.cwd || p.cwd.startsWith(MY_CWD) || MY_CWD.startsWith(p.cwd))
 			.map((p) => p.pane_id);
 		if (fresh.length === 0) {
 			return;
