@@ -18,6 +18,16 @@ link() { # link <repo内真源> <目标路径>
 # ghostty / herdr / omp agent 配置（文件级 symlink）
 link "$DOTFILES/mac/ghostty/config"          "$HOME/.config/ghostty/config"
 link "$DOTFILES/mac/herdr/config.toml"       "$HOME/.config/herdr/config.toml"
+
+# pi 用户级 extension（2026-10-11 起）：只 link 本仓库里的扩展，不做整目录循环。
+# ⚠️ ~/.pi/agent/extensions/herdr-agent-state.ts 是 herdr 官方集成的副本
+#    （herdr 自己安装并管理，重装/升级会覆盖）—— 不纳管，也不要被本循环覆盖。
+# 本仓库现有：herdr-watch.ts（订阅 herdr socket 的 agent 状态变化，推给会话）
+for ext_file in "$DOTFILES"/mac/pi/agent/extensions/*.ts; do
+  [ -e "$ext_file" ] || continue
+  link "$ext_file" "$HOME/.pi/agent/extensions/$(basename "$ext_file")"
+done
+
 # ⚠️ omp 已弃用（2026-09-18 确认）：以下两条 ~/.omp 链接保留仅为历史兼容，不再新增/维护
 link "$DOTFILES/mac/omp/agent/APPEND_SYSTEM.md" "$HOME/.omp/agent/APPEND_SYSTEM.md"
 # omp 用户级 extension：循环 link（guard-system-install 等全局拦截扩展）
