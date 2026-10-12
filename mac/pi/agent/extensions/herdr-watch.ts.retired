@@ -1,3 +1,7 @@
+/* 【2026-10-12 停用】不再部署（后缀 .retired 使其躲开 install.sh 的 *.ts 通配）。
+   原因：功能被 herdr-dispatch 的 `watch`（有界快照 · 交付物读取）取代；且实测它看不到 TUI 命令
+   （/reload、/db-update 不产生 agent turn → agent_status 不变 → 无推送）。保留源码备查。 */
+
 /* herdr-watch —— 盯住同项目其他 agent 的状态变化，变化时唤醒本会话。
 
    设计（2026-10-11 晚改定，依据 comtools 的 herdr 事件等待调研报告）：

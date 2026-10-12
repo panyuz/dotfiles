@@ -22,7 +22,8 @@ link "$DOTFILES/mac/herdr/config.toml"       "$HOME/.config/herdr/config.toml"
 # pi 用户级 extension（2026-10-11 起）：只 link 本仓库里的扩展，不做整目录循环。
 # ⚠️ ~/.pi/agent/extensions/herdr-agent-state.ts 是 herdr 官方集成的副本
 #    （herdr 自己安装并管理，重装/升级会覆盖）—— 不纳管，也不要被本循环覆盖。
-# 本仓库现有：herdr-watch.ts（订阅 herdr socket 的 agent 状态变化，推给会话）
+# 2026-10-12 停用：herdr-watch 改名 herdr-watch.ts.retired（躲开下面的 *.ts 通配，不再链接）——
+#   功能已被 herdr-dispatch 的 watch 取代；它看不到 TUI 命令是已知盲区。
 for ext_file in "$DOTFILES"/mac/pi/agent/extensions/*.ts; do
   [ -e "$ext_file" ] || continue
   link "$ext_file" "$HOME/.pi/agent/extensions/$(basename "$ext_file")"
