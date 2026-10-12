@@ -2,6 +2,8 @@
 
 本文记 herdr 里派子 agent 的口径与坑。命令语义的真源是官方 `SKILL.md`，以及 `herdr agent` 与 `herdr pane` 的输出。本文只回答一件事：怎么用不出错。
 
+> **分工（2026-10-12 起）**：派发/回收 worker（assign · handoff · watch · collect · send · 模型列举）**优先用 `herdr-dispatch` skill**（已装全局：job store + generation 对账 + 交付物文件 + 有界 watch ≤60s；它明文禁止手写原始 `herdr agent` 序列）。本文件只留：① 控制面语法 ② herdr 生命期语义 ③ 本机踩过的坑（含 2026-10-12 五条）。
+
 ## 派发（4 步，不要同步等）
 
 ```bash
@@ -88,6 +90,14 @@ diff <(sed -n '/^# Herdr$/,$p' /tmp/new.md) <(sed -n '/^# Herdr$/,$p' ~/.pi/agen
 ```
 
 一致就不用动。不一致时，用官方正文替换部署版的正文段，保留本机 header。
+
+## 2026-10-12 实测五条（服务端事件等待 · 回注时序）
+
+1. **`agent wait` 的 `--until` 一旦显式写出就只认那一态**：`--until done` 在 agent 以 `idle` 结束时**不返回**（挂到超时）；写全 `--until idle --until done --until blocked`，或省略 `--until`（默认三态）。已达成状态**立即返回**（实测 0.006 s）。
+2. **后台等待的正确形状**：`nohup herdr agent wait <target> --until idle --until done --timeout 600000 > /tmp/wait.json 2>&1 &` —— 退出即唤醒（调研文档 §方案 2 要点 1）；一次性，返回后要重启；收尾记得 kill。
+3. **herdr-watch 看不到 TUI 命令**：`/reload`、`/db-update` 这类不产生 agent turn → `agent_status` 不变 → 无推送。这类操作只能 pane 轮询或 `agent read` 盯。
+4. **注入结果会滞后于 turn**：子会话在同一 turn 里 `sleep 30` 轮询会占住 turn → 结果注入等它结束（实测滞后 2.3–2.8 min）。派发后**结束回合**等回注；进度用交付物文件 mtime / `ps` 判。
+5. **`agent_pane_busy` / `agent_not_ready` 是瞬态**：面板还不是空 shell 时 `agent start` 报 busy；稍等重试或等 `idle` 即好 —— **不是失败**，别重投任务书。
 
 ## 相关
 

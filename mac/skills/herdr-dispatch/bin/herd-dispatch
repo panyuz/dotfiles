@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+# uv shim：不用系统 python3（macOS 自带 3.9.6），也不给各项目装依赖 —— 本脚本纯标准库，uv 的解释器全局缓存
+# 必须解析符号链（PATH 入口 symlink 指向本文件），否则 $(dirname) 会指到 ~/.local
+set -euo pipefail
+target="${BASH_SOURCE[0]}"
+while [ -L "$target" ]; do
+  dir="$(cd "$(dirname "$target")" && pwd)"
+  link="$(readlink "$target")"
+  case "$link" in
+    /*) target="$link" ;;
+    *)  target="$dir/$link" ;;
+  esac
+done
+SKILL_DIR="$(cd "$(dirname "$target")/.." && pwd)"
+exec uv run --no-project --python 3.12 python "$SKILL_DIR/scripts/herd-dispatch" "$@"
