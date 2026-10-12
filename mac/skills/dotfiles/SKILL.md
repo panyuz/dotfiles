@@ -28,21 +28,23 @@ dotfiles/
 └── .gitignore                 # 排除 *.log/*.sock/session.json/release-notes.json/.plugins.lock/**/models.yml
 ```
 
-> **2026-09-18 变更**：全局 skill 真源由 `mac/omp/skills/` 迁到 **`mac/skills/`**（名实相符：herdr、dotfiles 都不属于 omp），
+> **2026-09-18 变更**：全局 skill 真源由 `mac/omp/skills/` 迁到 **`mac/skills/`**（名实相符：herdr-dispatch、dotfiles 都不属于 omp），
 > 部署方式从「omp 真源 + pi 实体副本」改为 **单一真源 + symlink 双端**；omp 已弃用，install.sh 不再纳管 `~/.omp/*`。
+
+> **2026-10-12 变更**：**herdr skill 停用**（官方正文改 `herdr --skill` 现取，免漂移）；4 个本机经验 references 迁入 `mac/skills/herdr-dispatch/references/local/`；新增 **herdr-dispatch** skill（上游 arronKler/herdr-skills v1.8 · copy 安装 + uv shim 入口，见其 `SOURCE.md`）。
 
 > **2026-08-21 规则**：omp 等 agent 仅纳管**文本文件**（mcp/skills/append/prompt）；
 > `config.yml`、`models.yml` 等本机自维护（真身在 `~/.omp/agent/`，不入库）。
 
 ## 关键机制（源码核实的硬事实）
 
-- **pi 用户级 skill 扫描目录 = `~/.pi/agent/skills/`**（`settings.json` 未声明 `skills` 数组，纯自动扫描）。symlink 目录被支持（现有 `dotfiles`/`herdr` 即为 symlink，实测可用）。
+- **pi 用户级 skill 扫描目录 = `~/.pi/agent/skills/`**（`settings.json` 未声明 `skills` 数组，纯自动扫描）。symlink 目录被支持（现有 `dotfiles`/`herdr-dispatch` 即为 symlink，实测可用）。
 - **skill 发现是自动目录扫描**：放对目录即自动注册，无需任何声明/注册。
 - **pi 加载时机 = 会话启动**：新增/修改 skill 后需**重启 pi 会话**才生效（当前会话有启动时缓存）。
-- **`disable-model-invocation: true`**（pi frontmatter 字段）：该 skill 不进系统提示，模型看不见、只能用户 `/skill:<name>` 手动调——用于「必须用户明确点名才用」的 skill（如 herdr）。
+- **`disable-model-invocation: true`**（pi frontmatter 字段）：该 skill 不进系统提示，模型看不见、只能用户 `/skill:<name>` 手动调——用于「必须用户明确点名才用」的 skill（历史上用过：herdr skill；2026-10-12 已停用）。
 - pi 忽略未知 frontmatter 字段（如旧 omp 的 `hide: true`），校验宽松；`name` 不要求与目录同名，便于共享目录。
 - **agy（Antigravity CLI）全局 skill 目录 = `~/.gemini/antigravity-cli/skills/`**（官方文档核实 2026-09-18；不是 `~/.gemini/config/skills/`——那是 Antigravity 2.0 / IDE 的位，且只认绝对路径、不认 `~`）。symlink 目录被跟随；用 `agy -p "/skills"` 可列出实际生效清单（比问模型可靠——模型可能漏报）。
-- **agy 只识 name/description**（官方仅这两个字段）：pi 的 `disable-model-invocation` 在 agy 侧无效，herdr 在 agy 里靠 description 自律（“仅在用户明确提到 Herdr 时才用”）。
+- **agy 只识 name/description**（官方仅这两个字段）：pi 的 `disable-model-invocation` 在 agy 侧无效，所以非手动类 skill（如 herdr-dispatch）靠 description 写清触发条件来自律。
 - omp 已弃用（2026-09-18）：`~/.omp/agent/*` 不再随 install.sh 更新；`mac/omp/` 目录仅留历史参考与搜索 skill 部署笔记。
 - herdr 的 `plugins.json` 是插件管理器回写状态文件（含本机绝对路径）——**不纳管**，留在 `~/.config/herdr/plugins.json` 本机自维护。
 - `~/.omp/agent/config.yml`、`~/.omp/agent/models.yml` 本机自维护（可能含密钥/本机偏好）——**不入库**。

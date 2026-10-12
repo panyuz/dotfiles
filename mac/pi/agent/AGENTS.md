@@ -11,10 +11,11 @@ Write your answers in Chinese. You can use English words for technical names. Ke
 
 ## herdr (terminal multi-agent parallel)
 
-- 用 herdr 之前（dispatch agent、poll state、开/关 panel），先读它 skill 的 `references/`，取本机经验：`agent-dispatch.md`（dispatch 节奏、state 语义、常见错误）、`pi-interaction.md`（run pi）、`agy-interaction.md`（run agy）、`mcp-config.md`。官方 `SKILL.md` 只给 command contract，**不得修改**。要刷新时运行 `herdr --skill`。
-- 两个最常见的错误：
-  1. 给 `agent prompt` 加 `--wait`。这会让当前会话 block，直到该 agent 完成。
-  2. 忘记 poll。用 `herdr agent list` 看 state：`done` = 已完成、你还没读；`blocked` = agent 在等你的回答。
+- **派发/回收 worker → 用 `herdr-dispatch` skill**（`assign` · `handoff` · `watch` · `collect` · `send`；自带 job store + 交付物读取 + 有界 watch ≤60s）。**不要手写原始 `herdr agent start/wait/prompt` 序列**。
+- **本机经验**（herdr/pi/agy/MCP 的实操与踩坑）在 dotfiles：`mac/skills/herdr-dispatch/references/local/` —— `agent-dispatch.md`（派发·状态语义·实测五条）· `pi-interaction.md`（run pi）· `agy-interaction.md`（run agy）· `mcp-config.md`。
+- CLI 命令语义的真源 = **`herdr --skill` 现取**（官方正文不入库，免漂移）；命令组可直接打（`herdr agent` / `pane` / `tab` …）。
+- 前置：`test "${HERDR_ENV:-}" = 1`；**不要跑裸 `herdr`**（会 attach TUI）。
+- 两条最常见错误：① 给 `agent prompt` 加 `--wait` → block 当前会话；② 忘了 poll —— 用 `herdr agent list` 看 state（`done` = 干完你还没读；`blocked` = 在等你回答）。
 
 ## External Search (GitHub)
 
