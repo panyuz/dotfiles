@@ -28,7 +28,13 @@
      - douglascorrea/herdr-agent-inbox：订阅 + 0.4 秒防抖 + 30 秒兜底 tick。
 
    只服务 TUI 模式（RPC/JSON/print 没有 PTY，herdr 显示不了）。
-   只监控名单文件里的 pane（见 WATCH_LIST）。文件不存在 = 谁都不监控。
+   监控开关（2026-10-12 用户改造）：
+   - watcher 名单 WATCH_LIST：一行一个 pane id，名单内的 pane 才做监控者。每次推送前重读
+     （热重载）→ `herdr-watch off` 清名单立即静默，`on` 立即生效，无需重启会话。
+   - 目标过滤名单 WATCH_TARGETS（可选）：一行一条（pane id / label / 标题关键词，子串匹配，
+     大小写不敏感）。文件存在且有条目 → 只推命中的 pane；缺失/空 → 同项目全部（原行为）。
+   - 开关命令：~/.pi/agent/bin/herdr-watch（on|off|status）；项目内 just watch-on/off/status。
+   文件不存在 = 谁都不监控（安全默认）。
    排障日志：/tmp/herdr-watch.log（设 HERDR_WATCH_DEBUG=0 关）。 */
 
 import net from "node:net";
@@ -56,7 +62,11 @@ const MY_PANE = process.env.HERDR_PANE_ID;
 const MY_CWD = process.env.HERDR_CWD || process.env.PWD || process.cwd();
 
 // 推送这两种状态。done = 干完还没被看过；blocked = 在等人回话。
-const PUSH_STATES = new Set(["blocked", "done"]);
+// 推送这几种状态。来源：herdr schema 的 PaneAgentState 取值域
+// = ["idle", "working", "blocked", "unknown"]（注意：没有 done）。
+// idle = 一轮干完，回到提示符等人。blocked = 在等人回话。done 保留是为了兼容
+// AgentStatus 那个更大的取值域（含 done），reconcile 走 pane.list 时不会出现它。
+const PUSH_STATES = new Set(["blocked", "done", "idle"]);
 // 同一个 pane 两次推送之间的最短间隔（毫秒）。
 const COOLDOWN_MS = 8000;
 // 心跳：这么久没有任何推送时，主动提一条。有推送就不提。设 0 关闭。
@@ -82,33 +92,40 @@ const BACKOFF_MAX_MS = 30000;
 // 单条短连接的兜底超时。
 const SHORT_CALL_TIMEOUT_MS = 4000;
 
-// 监控名单文件：只有名单里的 pane 才做监控。
+// 监控者名单：名单内的 pane 才收推送（热重载：每次推送前重读）。
 // 本扩展装在全局扩展目录，每个 pi 会话都会加载它。若不做区分，同一项目的每个面板都会
 // 收到推送（例如 agent 面板被唤醒去处理别的 agent 的事件），造成互相唤醒。
-// 名单一行一个 pane id。文件不存在 = 谁都不监控（安全默认）。
+// 一行一个 pane id，支持 # 注释。文件不存在 = 谁都不监控（安全默认）。
 const WATCH_LIST = "/Users/panyu/.config/herdr/watch-panes";
+// 目标过滤名单（可选）：一行一条，对 pane_id / label / 终端标题做子串匹配（大小写不敏感）。
+// 文件存在且有条目 → 只推命中的 pane；缺失/空 → 同项目全部（原行为）。
+const WATCH_TARGETS = "/Users/panyu/.config/herdr/watch-targets";
 
-function listedAsWatcher(): boolean {
+/** 读名单文件：去空行、去 # 注释。文件缺失/读不了 = 空名单。每次调用都重读（热重载）。 */
+function readListFile(path: string): string[] {
 	try {
-		if (!MY_PANE) {
-			return false;
+		if (!fs.existsSync(path)) {
+			return [];
 		}
-		if (!fs.existsSync(WATCH_LIST)) {
-			return false;
-		}
-		const lines = fs.readFileSync(WATCH_LIST, "utf8").split(/\r?\n/);
-		return lines.map((l) => l.trim()).filter(Boolean).includes(MY_PANE);
+		return fs.readFileSync(path, "utf8")
+			.split(/\r?\n/)
+			.map((l) => l.trim())
+			.filter(Boolean)
+			.filter((l) => !l.startsWith("#"));
 	} catch {
-		return false;
+		return [];
 	}
 }
 
-function enabled(): boolean {
-	return HERDR_ENV === "1" && !!SOCKET_PATH && !!MY_PANE && listedAsWatcher();
+/** 本 pane 当前是否有监控者资格（每次重读名单 → watch on/off 立即生效）。 */
+function watcherNow(): boolean {
+	return !!MY_PANE && readListFile(WATCH_LIST).includes(MY_PANE);
 }
 
 export default function (pi: ExtensionAPI) {
-	if (!enabled()) {
+	// 只查静态环境。watcher 名单热重载（推送前逐次查），所以名单为空也照常启动循环，
+	// 中途 `herdr-watch on` 立即生效、`off` 立即静默。
+	if (!(HERDR_ENV === "1" && !!SOCKET_PATH && !!MY_PANE)) {
 		return;
 	}
 
@@ -185,6 +202,20 @@ export default function (pi: ExtensionAPI) {
 		pane_id?: string;
 		cwd?: string;
 		agent_status?: string;
+		label?: string;
+		terminal_title_stripped?: string;
+	}
+
+	/** 目标过滤：名单有条目时只放行命中者；名单缺失/空 = 同项目全部（原行为）。 */
+	function targetAllowed(p: PaneInfo): boolean {
+		const rules = readListFile(WATCH_TARGETS);
+		if (rules.length === 0) {
+			return true;
+		}
+		const hay = [p.pane_id, p.label, p.terminal_title_stripped]
+			.filter(Boolean)
+			.map((s) => String(s).toLowerCase());
+		return rules.some((r) => hay.some((h) => h.includes(r.toLowerCase())));
 	}
 
 	/** 比对状态快照，对进入 blocked 或 done 的 pane 发推送。 */
@@ -202,15 +233,16 @@ export default function (pi: ExtensionAPI) {
 			}
 			const prev = lastStates.get(paneId);
 			lastStates.set(paneId, status);
-			// 本 pane 跳过。状态没变不算事件。不是推送状态不算事件。
-			if (paneId === MY_PANE || prev === status || !PUSH_STATES.has(status)) {
+			// 本 pane 跳过。首次见到这个 pane 不推（避免启动时误报）。
+			// 状态没变不算事件。不是推送状态不算事件。
+			if (paneId === MY_PANE || prev === undefined || prev === status || !PUSH_STATES.has(status)) {
 				continue;
 			}
 			// 同项目才算：主仓 INVEST 与 worktree INVEST-slim 前缀互含。别的项目不打扰。
 			if (MY_CWD && p.cwd && !p.cwd.startsWith(MY_CWD) && !MY_CWD.startsWith(p.cwd)) {
 				continue;
 			}
-			push(paneId, status);
+			push(p, paneId, status);
 		}
 		for (const k of [...lastStates.keys()]) {
 			if (!seen.has(k)) {
@@ -219,8 +251,12 @@ export default function (pi: ExtensionAPI) {
 		}
 	}
 
-	/** 发一条推送。冷却时间内不重复推同一个 pane。 */
-	function push(paneId: string, status: string): void {
+	/** 发一条推送。热重载双门：watcher 资格（watch-panes）+ 目标过滤（watch-targets）。冷却期内不重复推同一个 pane。 */
+	function push(p: PaneInfo, paneId: string, status: string): void {
+		if (!watcherNow() || !targetAllowed(p)) {
+			dbg(`跳过推送 pane=${paneId}（${!watcherNow() ? "本 pane 不在 watcher 名单" : "目标过滤未命中"}）`);
+			return;
+		}
 		const now = Date.now();
 		const last = lastPushAt.get(paneId) ?? 0;
 		if (now - last < COOLDOWN_MS) {
@@ -228,7 +264,8 @@ export default function (pi: ExtensionAPI) {
 		}
 		lastPushAt.set(paneId, now);
 		lastAnyPushAt = now;
-		const label = status === "blocked" ? "在等你回话（blocked）" : "干完了（done）";
+		const label =
+		status === "blocked" ? "在等你回话（blocked）" : status === "idle" ? "干完了（idle）" : "干完了（done）";
 		dbg(`推送 pane=${paneId} status=${status}`);
 		pi.sendMessage(
 			{
@@ -382,9 +419,12 @@ export default function (pi: ExtensionAPI) {
 		reconcile();
 		refreshTick();
 
-		// 心跳：静默期定期提一条，让主模型回头看主线。
+		// 心跳：静默期定期提一条，让主模型回头看主线。watcher 名单热重载：off 期间不吵。
 		if (HEARTBEAT_MS > 0) {
 			heartbeatTimer = setInterval(() => {
+				if (!watcherNow()) {
+					return;
+				}
 				const now = Date.now();
 				if (now - lastAnyPushAt < HEARTBEAT_MS) {
 					return; // 刚刚有推送，不吵
@@ -409,7 +449,12 @@ export default function (pi: ExtensionAPI) {
 		}
 
 		if (ctx.hasUI) {
-			ctx.ui.notify(`herdr-watch：订阅事件 + 对账（本 pane ${MY_PANE}）`, "info");
+			ctx.ui.notify(
+				watcherNow()
+					? `herdr-watch：监控中（本 pane ${MY_PANE}）；off 可静默，targets 可过滤目标`
+					: `herdr-watch：待命（watcher 名单无本 pane；herdr-watch on 开启）`,
+				"info",
+			);
 		}
 	});
 
