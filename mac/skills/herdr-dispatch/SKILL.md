@@ -7,12 +7,9 @@ metadata:
   runtime: herdr
 ---
 
-> **本机入口（2026-10-12 本地补丁）**：用**部署位**的 uv shim 调：`~/.pi/agent/skills/herdr-dispatch/bin/herd-dispatch`（或 skill 内相对路径 `bin/herd-dispatch`）—— **不要**用 `python3 scripts/herd-dispatch`（本机规矩：不用系统 python3）；**不往 `~/.local/bin` 装**（那不住 dotfiles 管）。
->
-> CLI 命令语义的真源 = **`herdr --skill` 现取**（官方正文不入库，免漂移）。
->
-> **三条不可忘**：① `test "${HERDR_ENV:-}" = 1`，不成立就停手（不从外面操控）；② 不跑裸 `herdr`（会 attach TUI）；③ 给 worker 用**显式 pane id**、`--no-focus`，不 `--current`。
-> 依赖零安装（纯标准库）；运行期状态落**项目内** `.herd-dispatch/`（+ `--worktree` 的 `.worktrees/`），不写 `$HOME`。上游来源与本地差异见 `SOURCE.md`。
+> **入口**：运行 `bin/herd-dispatch`。它用 uv 运行 Python 3.12。不要运行 `python3`。
+> **三条规则**：① 先测 `HERDR_ENV=1`。测试失败时，停止操作。② 不要运行裸 `herdr`。③ 给 worker 指定 pane id，并加 `--no-focus`。
+> **落点**：状态写入项目内 `.herd-dispatch/`。脚本只用标准库。因此不需要安装依赖。
 
 # Herdr Dispatch
 
@@ -56,10 +53,10 @@ If `status` is `blocked`, inspect the approval/question and show it to the human
 | `watch` | fleet monitor | up to 30s by default | Check all jobs with one snapshot per cycle |
 | `models` | — | no | List live model ids for one `--kind` |
 
-Script path (resolve relative to this skill): `scripts/herd-dispatch`.
+Entry point (resolve relative to this skill): `bin/herd-dispatch`. It runs `scripts/herd-dispatch` with uv.
 
 ```bash
-python3 "$SKILL_DIR/scripts/herd-dispatch" doctor
+"$SKILL_DIR/bin/herd-dispatch" doctor
 ```
 
 Replace `$SKILL_DIR` with this skill directory. A `herd-dispatch` on PATH is also fine.
@@ -67,7 +64,7 @@ Replace `$SKILL_DIR` with this skill directory. A `herd-dispatch` on PATH is als
 ## Assign (async)
 
 ```bash
-python3 scripts/herd-dispatch assign \
+bin/herd-dispatch assign \
   --kind codex \
   --role implementer \
   --name impl-auth \
@@ -78,9 +75,9 @@ python3 scripts/herd-dispatch assign \
 Returns once prompt delivery is confirmed or the bounded confirmation window expires. Dispatch the other independent jobs, then supervise the whole wave with `watch`; collect each settled job. Continue the authorized task rather than ending the turn with only a promise to collect later.
 
 ```bash
-python3 scripts/herd-dispatch watch --name impl-auth --timeout 30000
+bin/herd-dispatch watch --name impl-auth --timeout 30000
 # Repeat watch while action is wait; when action is collect:
-python3 scripts/herd-dispatch collect --name impl-auth
+bin/herd-dispatch collect --name impl-auth
 ```
 
 Reserve `collect --wait` for a single outstanding worker. With several workers, watch all of them together so a slow job does not hide a sibling's completion or failure.
@@ -92,7 +89,7 @@ Parallel assign is allowed only when tasks do not share a writable tree. Use `--
 ## Handoff (sync)
 
 ```bash
-python3 scripts/herd-dispatch handoff \
+bin/herd-dispatch handoff \
   --kind claude \
   --role reviewer \
   --name rev-auth \
@@ -106,7 +103,7 @@ Read `deliverable` if set, else `result_excerpt`. `pane.md` is the TUI dump; old
 ## Send message
 
 ```bash
-python3 scripts/herd-dispatch send \
+bin/herd-dispatch send \
   --name impl-auth \
   --wait \
   --message "Address only the reviewer items listed below. Do not expand scope."
@@ -117,7 +114,7 @@ python3 scripts/herd-dispatch send \
 ## Supervise the whole wave
 
 ```bash
-python3 "$SKILL_DIR/scripts/herd-dispatch" watch \
+"$SKILL_DIR/bin/herd-dispatch" watch \
   --name impl-auth --name impl-ui --name rev-api --timeout 30000
 ```
 
@@ -150,15 +147,15 @@ Grok Build is kind `grok` (aliases: `grok-build`, `grok build`). Cursor Agent CL
 When the human names a model, or you need to choose one, list ids first. Do not invent ids. Probe only the kind you are about to spawn:
 
 ```bash
-python3 scripts/herd-dispatch models --kind grok
-python3 scripts/herd-dispatch models --kind cursor
+bin/herd-dispatch models --kind grok
+bin/herd-dispatch models --kind cursor
 ```
 
 Read `models[].id` and `default`. Then pass that id on spawn:
 
 ```bash
-python3 scripts/herd-dispatch assign --kind grok --model <id> --name impl-auth --message-file ...
-python3 scripts/herd-dispatch assign --kind cursor --model <id> --name impl-cursor --message-file ...
+bin/herd-dispatch assign --kind grok --model <id> --name impl-auth --message-file ...
+bin/herd-dispatch assign --kind cursor --model <id> --name impl-cursor --message-file ...
 ```
 
 `doctor.model_kinds` is the set of kinds this probe supports. If `ok` is false, show the JSON; do not guess. If the kind has no mapping, pass native flags with `--args` instead of `--model`. Do not pass both. Cursor catalogs can be hundreds of ids — pick one (or the `default`) instead of pasting the whole list.
@@ -197,7 +194,7 @@ Do not default `--kind grok` for a worker. Grok's first prompt often never start
 Leave workers up when the human may inspect panes. Stop only workers you spawned:
 
 ```bash
-python3 scripts/herd-dispatch stop --name impl-auth --yes
+bin/herd-dispatch stop --name impl-auth --yes
 ```
 
 Never `herdr server stop`. Never close the captain pane.

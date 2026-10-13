@@ -8,3 +8,7 @@ release-notes.json
 
 # omp 配置锁（运行时产物）
 config.yml.lock
+
+# Python 运行期产物（不入库）
+__pycache__/
+*.pyc
