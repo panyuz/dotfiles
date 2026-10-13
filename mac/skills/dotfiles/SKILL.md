@@ -31,7 +31,9 @@ dotfiles/
 > **2026-09-18 变更**：全局 skill 真源由 `mac/omp/skills/` 迁到 **`mac/skills/`**（名实相符：herdr-dispatch、dotfiles 都不属于 omp），
 > 部署方式从「omp 真源 + pi 实体副本」改为 **单一真源 + symlink 双端**；omp 已弃用，install.sh 不再纳管 `~/.omp/*`。
 
-> **2026-10-12 变更**：**herdr skill 停用**（官方正文改 `herdr --skill` 现取，免漂移）；4 个本机经验 references 迁入 `mac/skills/herdr-dispatch/references/local/`；新增 **herdr-dispatch** skill（上游 arronKler/herdr-skills v1.8 · copy 安装 + uv shim 入口，见其 `SOURCE.md`）。另：**herdr-watch 扩展停用**（改名 `herdr-watch.ts.retired` 躲开 install.sh 的 `*.ts` 通配，不再链接）—— 功能被 herdr-dispatch 的 `watch` 取代。
+> **2026-10-12 变更**：**herdr skill 停用**（官方正文改 `herdr --skill` 现取，免漂移）；4 个本机经验 references 迁入 `mac/skills/herdr-dispatch/references/local/`（**已于 2026-10-13 删除，见下条**）；新增 **herdr-dispatch** skill（上游 arronKler/herdr-skills v1.8 · copy 安装 + uv shim 入口，见其 `SOURCE.md`）。另：**herdr-watch 扩展停用**（改名 `herdr-watch.ts.retired` 躲开 install.sh 的 `*.ts` 通配，不再链接）—— 功能被 herdr-dispatch 的 `watch` 取代。
+
+> **2026-10-13 变更**：**删除 `mac/skills/herdr-dispatch/references/local/`**（agent-dispatch / pi-interaction / agy-interaction / mcp-config 四个本机笔记）—— 其中「手搓 4 步」写法（`herdr pane split --current`）与上游 SKILL.md 的放置规则（worker 独占新建 tab、never split the captain pane）**相冲突**，留着会误导；全局 `mac/pi/agent/AGENTS.md` 与 skill 的 SKILL.md 头部指向该目录的两处引用同步删除。需查旧笔记时从 git 历史取（`git show <commit>:mac/skills/herdr-dispatch/references/local/agent-dispatch.md`）。
 
 > **2026-08-21 规则**：omp 等 agent 仅纳管**文本文件**（mcp/skills/append/prompt）；
 > `config.yml`、`models.yml` 等本机自维护（真身在 `~/.omp/agent/`，不入库）。

@@ -9,7 +9,7 @@ metadata:
 
 > **本机入口（2026-10-12 本地补丁）**：用**部署位**的 uv shim 调：`~/.pi/agent/skills/herdr-dispatch/bin/herd-dispatch`（或 skill 内相对路径 `bin/herd-dispatch`）—— **不要**用 `python3 scripts/herd-dispatch`（本机规矩：不用系统 python3）；**不往 `~/.local/bin` 装**（那不住 dotfiles 管）。
 >
-> **本机经验（承自 2026-10-12 停用的 herdr skill）**：`references/local/` —— `agent-dispatch.md`（派发·状态语义·2026-10-12 实测五条）· `pi-interaction.md`（run pi）· `agy-interaction.md`（run agy）· `mcp-config.md`。CLI 命令语义的真源 = **`herdr --skill` 现取**。
+> CLI 命令语义的真源 = **`herdr --skill` 现取**（官方正文不入库，免漂移）。
 >
 > **三条不可忘**：① `test "${HERDR_ENV:-}" = 1`，不成立就停手（不从外面操控）；② 不跑裸 `herdr`（会 attach TUI）；③ 给 worker 用**显式 pane id**、`--no-focus`，不 `--current`。
 > 依赖零安装（纯标准库）；运行期状态落**项目内** `.herd-dispatch/`（+ `--worktree` 的 `.worktrees/`），不写 `$HOME`。上游来源与本地差异见 `SOURCE.md`。
