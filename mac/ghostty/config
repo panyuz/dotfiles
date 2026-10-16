@@ -14,12 +14,15 @@ font-thicken     = true
 adjust-cell-height = 0
 font-feature     = calt
 
-# ── 主题：Rose Pine（软暗色护眼，固定暗色不随系统切亮；与 herdr 同步）──
+# ── 主题：Catppuccin Mocha（与 herdr 的 catppuccin 同步；固定暗色不随系统切亮）──
 # 注：window-theme=auto 只影响 macOS 标题栏亮暗，终端配色固定
+# 2026-10-16：Rose Pine → Catppuccin Mocha，为了复刻参考图。对照像素：
+#   正文 #1E1E2E（Mocha base）、目录 teal #94E2D5、可执行 red #F38BA8、tab 条 #11111B（crust）。
+#   想回退：这行改回 "Rose Pine"。
 # 2026-10-16：background-blur 20 → macos-glass-regular（macOS 26+ 原生玻璃）。
 #   效果：标题栏不再是一层平色，而是能看到桌面透过来的玻璃；正文仍由 0.9 不透明度压住。
 #   不要的话把这行改回 20。
-theme            = "Rose Pine"
+theme            = "Catppuccin Mocha"
 background-opacity = 0.9
 background-blur    = macos-glass-regular
 window-theme     = auto

@@ -3,9 +3,10 @@
 
 onboarding = false
 
-# ── Theme：Rose Pine 软暗色护眼（与 ghostty 同步，固定暗色不随系统切亮）──
+# ── Theme：Catppuccin（与 ghostty 的 Catppuccin Mocha 同步，固定暗色不随系统切亮）──
+# 2026-10-16：rose-pine → catppuccin（配 ghostty 一起换，为了复刻参考图）
 [theme]
-name        = "rose-pine"
+name        = "catppuccin"
 auto_switch = false
 
 # ── Terminal ───────────────────────────────────────────
