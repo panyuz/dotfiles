@@ -1,6 +1,11 @@
 # Ghostty config — macOS + Herdr + OMP（唯一配置源，2026-08-21 整合）
 # 旧 ~/Library/Application Support/com.mitchellh.ghostty/config 已并入本文件并删除
 # 职责划分：Ghostty 只做渲染；分屏/标签/窗口管理交给 Herdr（prefix 键）
+#
+# 2026-10-16 实测：改完本文件后，运行中的 Ghostty 不会自己生效，要手动重载：
+#   Ghostty 里按 ⌘⇧,（reload_config，默认键位）或菜单 Ghostty → Reload Configuration。
+#   怀疑原因：本文件是 symlink（~/.config/ghostty/config → dotfiles），文件监视看不到改动。
+#   另外：窗口级设置（macos-titlebar-style、玻璃）即使重载也只对新开的窗口生效。
 
 # ── 字体（Maple Mono NF CN：Nerd Font 图标 + 中文渲染，维持原生效值）──
 font-family      = Maple Mono NF CN
@@ -11,9 +16,12 @@ font-feature     = calt
 
 # ── 主题：Rose Pine（软暗色护眼，固定暗色不随系统切亮；与 herdr 同步）──
 # 注：window-theme=auto 只影响 macOS 标题栏亮暗，终端配色固定
+# 2026-10-16：background-blur 20 → macos-glass-regular（macOS 26+ 原生玻璃）。
+#   效果：标题栏不再是一层平色，而是能看到桌面透过来的玻璃；正文仍由 0.9 不透明度压住。
+#   不要的话把这行改回 20。
 theme            = "Rose Pine"
 background-opacity = 0.9
-background-blur    = 20
+background-blur    = macos-glass-regular
 window-theme     = auto
 
 # Option 键发送 ESC（alt 修饰）——herdr 的 prefix+alt+1..9（focus_agent）等 alt 组合键依赖此设置
