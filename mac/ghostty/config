@@ -19,12 +19,16 @@ font-feature     = calt
 # 2026-10-16：Rose Pine → Catppuccin Mocha，为了复刻参考图。对照像素：
 #   正文 #1E1E2E（Mocha base）、目录 teal #94E2D5、可执行 red #F38BA8、tab 条 #11111B（crust）。
 #   想回退：这行改回 "Rose Pine"。
-# 2026-10-16：background-blur 20 → macos-glass-regular（macOS 26+ 原生玻璃）。
-#   效果：标题栏不再是一层平色，而是能看到桌面透过来的玻璃；正文仍由 0.9 不透明度压住。
-#   不要的话把这行改回 20。
+# 2026-10-16：改成实心（background-opacity = 1 + 关模糊）。
+#   原因：要参考图那种“实心深色 tab 条”。macOS 的 tab 条由系统绘制（玻璃材质），
+#   Ghostty 没有单独的 tab 条不透明度开关；窗口一旦不透明，玻璃后面就是纯色背景，
+#   tab 条看起来就是实心深色。
+#   代价：标题栏不再透出桌面。（参考图那个窗口本来就不透明：实测标题行 #1E1E2E、
+#   tab 条 #11111B，两块都是实心。）
+#   想要玻璃/透桌面版：把下面两行换成 background-opacity = 0.9 + background-blur = macos-glass-regular。
 theme            = "Catppuccin Mocha"
-background-opacity = 0.9
-background-blur    = macos-glass-regular
+background-opacity = 1
+background-blur    = false
 window-theme     = auto
 
 # Option 键发送 ESC（alt 修饰）——herdr 的 prefix+alt+1..9（focus_agent）等 alt 组合键依赖此设置
