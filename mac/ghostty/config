@@ -22,6 +22,8 @@ macos-option-as-alt = true
 # ── 窗口 ──
 window-padding-x = 12
 window-padding-y = 8
+# 视口除不尽单元格大小时，把余量均摊到四边（默认 false，会全堆在右下）
+window-padding-balance = true
 macos-titlebar-style = tabs
 window-save-state = always
 # herdr 场景安全：关窗口=client 脱离，server/pane 常驻；Cmd+W 秒关窗口是预期行为
@@ -32,11 +34,20 @@ cursor-style     = bar
 cursor-style-blink = false
 
 # ── 滚动/交互 ──
-scrollback-limit = 100000000
+# 2026-10-16：100MB → 20MB。回滚历史主要由 herdr 管（每 pane 50MB，见 herdr config.toml），
+# 这里是外层 surface 的上限，Ghostty 默认值本身就是 10MB。
+scrollback-limit = 20000000
 scrollbar        = never
 mouse-hide-while-typing = true
 copy-on-select   = clipboard
 shell-integration = zsh
+# ssh 两项：连 unraid / VPS 时自动装并缓存 xterm-ghostty 的 terminfo，TUI 颜色/键位更正确。
+# 省略的项保持默认（cursor / title / path 仍开，sudo 仍关）。
+shell-integration-features = ssh-env,ssh-terminfo
+# 长命令结束时发通知，只在「没有聚焦的 surface」上发（外层 shell 面有效）。
+# ⚠️ action 默认值是 bell,no-notify——只响铃不通知，所以必须显式改掉。
+notify-on-command-finish = unfocused
+notify-on-command-finish-action = no-bell,notify
 
 # ── 键位 ──
 # 字体大小
@@ -45,13 +56,21 @@ keybind = ctrl+minus=decrease_font_size:1
 keybind = ctrl+0=reset_font_size
 
 # Quick terminal（Quake 式下拉终端）
+# Quick terminal（Quake 式下拉终端）
 # ⚠️ 不用 global: 前缀——ghostty 1.3.x macOS 的 global: 键位有 Mach 端口泄漏 bug
-# （~1 端口/秒，uptime ~3.5 天后被 EXC_RESOURCE SIGKILL，杀掉所有终端会话；
-# 见 ghostty-org/ghostty#13456）。窗口内 ctrl+` 仍可唤起。
+# （~1 端口/秒；按此折算连续运行约 3.5 天后被 EXC_RESOURCE SIGKILL，杀掉所有终端会话）。
+# 出处是 discussion ghostty-org/ghostty#13456（不是 issue，gh issue view 13456 会 404）。
+# 2026-10-16 复核：维护者 mitchellh 2026-08-05 回 “Fixed on main”，但 1.3.1 仍是最新稳定
+# tag，修复未发布 → 继续用窗口内键位；等修复发布后，本行可改回
+# keybind = global:ctrl+grave_accent=toggle_quick_terminal，那就能在任何 app 里唤起。
 keybind = ctrl+grave_accent=toggle_quick_terminal
 quick-terminal-position = top
 quick-terminal-size     = 40%
 
 # 注意：不再绑定 Ghostty 原生分屏（new_split）——分屏由 herdr 管理
 # （prefix+v / prefix+- 或直连 ctrl+alt+d），原生分屏会在 herdr 内再套一层，布局混乱
+# 2026-10-16：补 unbind。之前只是没写自己的 new_split 绑定，Ghostty 默认的
+# super+d=new_split:right / super+shift+d=new_split:down 仍然生效——按 ⌘D 仍会套一层。
+keybind = super+d=unbind
+keybind = super+shift+d=unbind
 # 也不绑定 close_surface 类键（herdr 会话关窗口用 Cmd+W，防误触整窗关闭）

@@ -133,8 +133,17 @@ rows = [
 ]
 
 # ── Notifications ──────────────────────────────────────
+# 2026-10-16：delivery "herdr" → "system"。
+#   herdr    = 只在 herdr 界面内弹 toast → 窗口不在前台时看不到 agent 找你；
+#   terminal = 向外部终端发 OSC 9，但 Ghostty 对「聚焦面」来的通知会在 3 秒后删掉
+#              （macos/Sources/Ghostty/Surface View/SurfaceView_AppKit.swift:1776）→ 基本看不到；
+#   system   = 走 macOS 通知中心，Ghostty 无权删。本次选它。
+# 点通知跳回 Ghostty 需要 terminal-notifier（brew 装，本机未装）→ 没装时 herdr 回退
+# osascript，通知会显示为 Script Editor，点击不会切回终端。装不装由你定，未装也能看到横幅。
+# 下方 [ui.toast.herdr] 只对 delivery="herdr" 生效，留着无害。
 [ui.toast]
-delivery = "herdr"
+delivery = "system"
+delay_seconds = 2   # 官方默认 1；2 = 状态稳定两秒后才通知，少一点误报
 
 [ui.toast.herdr]
 position = "bottom-right"
@@ -146,6 +155,13 @@ position = "bottom-center"
 # ── Sound ──────────────────────────────────────────────
 [ui.sound]
 enabled = true
+
+# ── Server ─────────────────────────────────────────────
+# 2026-10-16 新增：没有客户端连接时（herdr dispatch / swarm 起 worker 的常见场景），
+# 新建 pane 用的虚拟终端尺寸。官方默认 120×40，加宽到 160×50 让 headless 输出不被提前折行。
+[server]
+headless_cols = 160
+headless_rows = 50
 
 # ── Session ────────────────────────────────────────────
 [session]
