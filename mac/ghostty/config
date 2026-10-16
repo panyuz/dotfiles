@@ -32,13 +32,16 @@ window-padding-x = 12
 window-padding-y = 8
 # 视口除不尽单元格大小时，把余量均摊到四边（默认 false，会全堆在右下）
 window-padding-balance = true
-# 2026-10-16：tabs → transparent（想回退：下面那行改回 tabs）。
-# 原因：tabs 样式在 macOS 26/27 上把标题栏换成原生 NSToolbar，只把系统 tab 条塞进去——
-# 标题被 titleVisibility=.hidden 藏掉，整条只剩一颗 ⌘2 药丸；工具栏那层深色玻璃 Ghostty 压不下去
-# （源码只压 tab 条那一小块：TransparentTitlebarTerminalWindow.swift:129 的
-#  reduceTabBarBackgroundGoldenGate()）。transparent 不用工具栏 → 标题文字回来，
-# tab 条回系统原生位置并显示 tab 名。此设置只对新窗口生效：改完用 ⌘N 开一个新窗口看。
-macos-titlebar-style = transparent
+# 标题栏样式选择史（2026-10-16，换样式改下面那行即可）：
+#   tabs        = macOS 26/27 上把标题栏换成原生 NSToolbar，只把系统 tab 条塞进去。标题被
+#                 titleVisibility=.hidden 藏掉，整条只剩一颗 ⌘2 药丸；工具栏那层深色玻璃
+#                 Ghostty 压不下去（源码只压 tab 条那一小块：TransparentTitlebarTerminalWindow
+#                 .swift:129 的 reduceTabBarBackgroundGoldenGate()）。
+#   transparent = 标题文字回来、tab 条显示 tab 名；标题栏染上终端背景色。
+#   native      = 当前选择。额外给标题前的文件夹图标（代理图标），文档写明只有 native 可见；
+#                 代价是“零定制”——标题栏走系统材质，不跟随终端背景色。
+# 改这行只对新窗口生效：先 ⌘⇧, 重载，再 ⌘N 开新窗口。
+macos-titlebar-style = native
 window-save-state = always
 # herdr 场景安全：关窗口=client 脱离，server/pane 常驻；Cmd+W 秒关窗口是预期行为
 confirm-close-surface = false
