@@ -19,6 +19,12 @@ link() { # link <repo内真源> <目标路径>
 link "$DOTFILES/mac/ghostty/config"          "$HOME/.config/ghostty/config"
 link "$DOTFILES/mac/herdr/config.toml"       "$HOME/.config/herdr/config.toml"
 
+# zsh + starship（2026-10-16 纳入，shell 侧配置也进仓库，换机可恢复）：
+#   ~/.zshrc = 交互式 shell 全部配置（别名、eza 颜色 EZA_COLORS、starship init、herdr 标题钩子）
+#   ~/.config/starship.toml = starship 官方 gruvbox-rainbow 预设
+link "$DOTFILES/mac/zsh/zshrc"               "$HOME/.zshrc"
+link "$DOTFILES/mac/starship/starship.toml"  "$HOME/.config/starship.toml"
+
 # pi 用户级 extension（2026-10-11 起）：只 link 本仓库里的扩展，不做整目录循环。
 # ⚠️ ~/.pi/agent/extensions/herdr-agent-state.ts 是 herdr 官方集成的副本
 #    （herdr 自己安装并管理，重装/升级会覆盖）—— 不纳管，也不要被本循环覆盖。

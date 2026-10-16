@@ -15,6 +15,8 @@ dotfiles/
 ├── mac/                      # macOS 专属配置
 │   ├── ghostty/config        # 终端外观/字体/快捷键（symlink 到 ~/.config/ghostty/config）
 │   ├── herdr/config.toml     # herdr 主题/快捷键（symlink 到 ~/.config/herdr/config.toml）
+│   ├── zsh/zshrc             # 交互式 shell 全部配置（symlink 到 ~/.zshrc；含 eza 颜色、starship init、herdr 标题钩子）
+│   ├── starship/starship.toml # 提示符主题（symlink 到 ~/.config/starship.toml，gruvbox-rainbow 预设）
 │   ├── pi/agent/AGENTS.md    # pi 全局指令（symlink 到 ~/.pi/agent/AGENTS.md）
 │   ├── skills/<name>/        # 全局 skill 真源（目录级 symlink → ~/.pi/agent/skills/ 与 ~/.gemini/antigravity-cli/skills/）
 │   └── omp/                  # ⚠️ omp 已弃用（2026-09-18），保留仅作历史参考
@@ -34,6 +36,9 @@ dotfiles/
 > **2026-10-12 变更**：**herdr skill 停用**（官方正文改 `herdr --skill` 现取，免漂移）；4 个本机经验 references 迁入 `mac/skills/herdr-dispatch/references/local/`（**已于 2026-10-13 删除，见下条**）；新增 **herdr-dispatch** skill（上游 arronKler/herdr-skills v1.8 · copy 安装 + uv shim 入口，见其 `SOURCE.md`）。另：**herdr-watch 扩展停用**（改名 `herdr-watch.ts.retired` 躲开 install.sh 的 `*.ts` 通配，不再链接）—— 功能被 herdr-dispatch 的 `watch` 取代。
 
 > **2026-10-13 变更**：**删除 `mac/skills/herdr-dispatch/references/local/`**（agent-dispatch / pi-interaction / agy-interaction / mcp-config 四个本机笔记）—— 其中「手搓 4 步」写法（`herdr pane split --current`）与上游 SKILL.md 的放置规则（worker 独占新建 tab、never split the captain pane）**相冲突**，留着会误导；全局 `mac/pi/agent/AGENTS.md` 与 skill 的 SKILL.md 头部指向该目录的两处引用同步删除。需查旧笔记时从 git 历史取（`git show <commit>:mac/skills/herdr-dispatch/references/local/agent-dispatch.md`）。
+
+> **2026-10-16 变更**：纳入两个 shell 侧文件：`mac/zsh/zshrc`（≈ 原来的 `~/.zshrc` 全文：别名、eza 颜色、starship init、herdr 标题钩子）与 `mac/starship/starship.toml`（starship 官方 gruvbox-rainbow 预设）。
+> **注意：`~/.zshrc` 从此是 symlink**——改 shell 配置要改仓库里的 `mac/zsh/zshrc`，改完新开 shell 生效。当时同时把 Ghostty/herdr 主题从 Rose Pine 换成 Catppuccin Mocha（复刻参考图）。
 
 > **2026-08-21 规则**：omp 等 agent 仅纳管**文本文件**（mcp/skills/append/prompt）；
 > `config.yml`、`models.yml` 等本机自维护（真身在 `~/.omp/agent/`，不入库）。
