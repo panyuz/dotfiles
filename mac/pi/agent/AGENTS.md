@@ -9,12 +9,25 @@ Write your answers in Chinese. You can use English words for technical names. Ke
 - 搜索：先用内置 `grep` 或 `find`。一次调用可以含多个 term（OR logic）。只有内置工具做不到的操作才用 bash。
 - 读文件：用 `read` 的 `offset` 和 `limit` 参数，只读 match 附近的内容。已知文件在 workspace 之外时，用 `read` 加绝对路径。
 
-## herdr (terminal multi-agent parallel)
+## Agent 协作（Herdr /）
+
+按当前环境选择管理层：在 Herdr 内用 Herdr 规则。
+
+**Herdr **
 
 - **派发/回收 worker → 用 `herdr-dispatch` skill**（`assign` · `handoff` · `watch` · `collect` · `send`；自带 job store + 交付物读取 + 有界 watch ≤60s）。**不要手写原始 `herdr agent start/wait/prompt` 序列**。
 - CLI 命令语义的真源 = **`herdr --skill` 现取**（官方正文不入库，免漂移）；命令组可直接打（`herdr agent` / `pane` / `tab` …）。
 - 前置：`test "${HERDR_ENV:-}" = 1`；**不要跑裸 `herdr`**（会 attach TUI）。
 - 两条最常见错误：① 给 `agent prompt` 加 `--wait` → block 当前会话；② 忘了 poll —— 用 `herdr agent list` 看 state（`done` = 干完你还没读；`blocked` = 在等你回答）。
+- **与 intercom 分工（控制面 / 消息面）**：herdr-dispatch 管生命周期（spawn、pane 摆位、job store、collect 归档）；intercom 管内容（回报、批复、决策、取消）。同一任务只走一条通路投递，勿双投。
+- **任务书写死一行**：「做完 intercom send 回 captain（短 id 用 `intercom list` 现取）」。回报会自动注入并唤醒 captain —— 收结果靠这个推送，不轮询；`collect` 只做 pane 转储归档。
+- **后续交互走 intercom**：追问、改稿、批复用 `intercom send` 发同一会话短 id，复用长驻 pane 上下文；短任务的频道确认并进任务书，不单发（快 worker 可能已干完）。
+- **watch 可省**：fleet 快照依赖 herdr（出过 1ms 超时故障）；`intercom list` 能看 live 状态（thinking / tool:xxx）与 pane 位置，足以补位。
+
+
+**通用**
+
+- 本机配置备份见 `~/Documents/github/dotfiles/mac/paseo/README.md`（原样快照，仅参考与恢复，不自动部署；无一键安装）。
 
 ## External Search (GitHub)
 
