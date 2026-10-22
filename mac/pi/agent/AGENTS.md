@@ -16,7 +16,7 @@ Write your answers in Chinese. You can use English words for technical names. Ke
 **Herdr **
 
 - **派发/回收 worker → 用 `herdr-dispatch` skill**（`assign` · `handoff` · `watch` · `collect` · `send`；自带 job store + 交付物读取 + 有界 watch ≤60s）。**不要手写原始 `herdr agent start/wait/prompt` 序列**。
-- herdr 命令语法不留本地文档：跑 **`herdr --skill`** 现取官方正文（随二进制走，免漂移；herdr skill 已停用，这个开关就是替代）；`herdr agent` / `herdr pane` / `herdr tab` 等命令组不带子命令直接跑，就是用法手册。
+- herdr 命令语法：跑 **`herdr --skill`** 现取官方正文（随二进制更新）；`herdr agent` / `pane` / `tab` 不带子命令直接跑，就是用法手册。
 - 前置：`test "${HERDR_ENV:-}" = 1`；**不要跑裸 `herdr`**（会 attach TUI）。
 - 两条最常见错误：① 给 `agent prompt` 加 `--wait` → block 当前会话；② 忘了 poll —— 用 `herdr agent list` 看 state（`done` = 干完你还没读；`blocked` = 在等你回答）。
 - **与 intercom 分工（控制面 / 消息面）**：herdr-dispatch 管生命周期（spawn、pane 摆位、job store、collect 归档）；intercom 管内容（回报、批复、决策、取消）。
