@@ -1,0 +1,25 @@
+{
+  "guard-global-installs": {
+    "PreToolUse": [
+      {
+        "hooks": [
+          {
+            "command": "python3 /Users/panyu/.gemini/config/hooks/block-global-install.py",
+            "timeout": 5,
+            "type": "command"
+          }
+        ],
+        "matcher": "run_command"
+      }
+    ]
+  },
+  "herdr": {
+    "PreInvocation": [
+      {
+        "command": "bash '/Users/panyu/.gemini/config/hooks/herdr-agent-state.sh' session",
+        "timeout": 10,
+        "type": "command"
+      }
+    ]
+  }
+}

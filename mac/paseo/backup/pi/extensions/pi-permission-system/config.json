@@ -1,0 +1,40 @@
+{
+  "$schema": "https://raw.githubusercontent.com/gotgenes/pi-packages/main/packages/pi-permission-system/schemas/permissions.schema.json",
+  "debugLog": false,
+  "permissionReviewLog": true,
+  "yoloMode": true,
+  "doublePressToConfirm": true,
+  "forwardingTimeoutMs": 600000,
+  "permission": {
+    "*": "allow",
+    "path": {
+      "*": "allow",
+      "*.env": "deny",
+      "*.env.*": "deny",
+      "*.env.example": "allow",
+      "*.pem": "deny",
+      "*.key": "deny",
+      "*pass/apienv/*": "allow"
+    },
+    "bash": {
+      "*": "allow",
+      "rm -rf / *": "deny",
+      "rm -rf *": "ask",
+      "sudo *": {
+        "action": "deny",
+        "reason": "sudo 提权可绕过一切包级规则（守卫亦拦）"
+      }
+    },
+    "external_directory": "ask",
+    "external_directory_read": {
+      "*": "allow"
+    }
+  },
+  "piInfrastructureReadPaths": [
+    "~/.pi",
+    "~/.omp",
+    "~/.config",
+    "~/Documents/github",
+    "/tmp"
+  ]
+}

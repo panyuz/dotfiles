@@ -1,0 +1,68 @@
+{
+  "lastChangelogVersion": "1.3.0",
+  "theme": "rose-pine",
+  "defaultProvider": "magpie",
+  "defaultModel": "group/auto-deepseek-flash",
+  "packages": [
+    "npm:pi-web-access",
+    "npm:@juicesharp/rpiv-ask-user-question",
+    "npm:@gotgenes/pi-permission-system",
+    "npm:pi-powerline-footer",
+    "npm:pi-compact-thinking",
+    "npm:pi-compact-transcript"
+  ],
+  "defaultThinkingLevel": "max",
+  "powerline": {
+    "preset": "compact",
+    "welcome": false,
+    "layout": {
+      "left": [
+        "model",
+        "thinking",
+        "shell_mode",
+        "path",
+        "git",
+        "custom:yolo"
+      ],
+      "right": [
+        "custom:turn_time",
+        "queue",
+        "token_out",
+        "cache_read",
+        "cache_write",
+        "cost",
+        "context_pct"
+      ]
+    },
+    "cache_read": {
+      "format": "percent"
+    },
+    "customItems": [
+      {
+        "id": "yolo",
+        "statusKey": "pi-permission-system",
+        "position": "left",
+        "prefix": "⚡",
+        "color": "warning"
+      },
+      {
+        "id": "turn_time",
+        "statusKey": "turn_time",
+        "position": "right",
+        "prefix": "⏱"
+      }
+    ],
+    "model": {
+      "display": "qualified"
+    }
+  },
+  "hideThinkingBlock": true,
+  "outputPad": 0,
+  "defaultTools": [
+    "+codemode"
+  ],
+  "extensions": [
+    "-builtin:llama.cpp"
+  ],
+  "deviceId": "78ea5eac-d510-4c8a-8686-adaec36fa2b0"
+}
