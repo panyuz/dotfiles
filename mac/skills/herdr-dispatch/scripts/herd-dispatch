@@ -809,7 +809,7 @@ def wait_for_shell(pane: str, timeout_ms: int = 15000) -> None:
         proc = run(["herdr", "pane", "read", pane, "--source", "visible", "--lines", "12"])
         last = (proc.stdout or proc.stderr or "").strip()
         if proc.returncode == 0 and last:
-            if re.search(r"[\$%❯➜#]\s*$", last, re.M) or "➜" in last:
+            if re.search(r"[\$%❯➜#]\s*$", last, re.M) or "➜" in last:
                 return
         time.sleep(0.25)
     die(f"pane {pane} did not become an interactive shell: {last[-300:]}")

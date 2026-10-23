@@ -9,21 +9,18 @@ Write your answers in Chinese. You can use English words for technical names. Ke
 - 搜索：先用 `grep` 或 `find`（同名工具已由 fff 插件接管：frecency 排序、模糊匹配）。一次调用可以含多个 term（OR logic）。只有它们做不到的操作才用 bash。
 - 读文件：用 `read` 的 `offset` 和 `limit` 参数，只读 match 附近的内容。已知文件在 workspace 之外时，用 `read` 加绝对路径。
 
-## Agent 协作（Herdr /）
+## Agent 协作
 
-按当前环境选择管理层：在 Herdr 内用 Herdr 规则。
-
-**Herdr **
-
-- **派发/回收 worker → 用 `herdr-dispatch` skill**（`assign` · `handoff` · `watch` · `collect` · `send`；自带 job store + 交付物读取 + 有界 watch ≤60s）。**不要手写原始 `herdr agent start/wait/prompt` 序列**。
-- herdr 命令语法：跑 **`herdr --skill`** 现取官方正文（随二进制更新）；`herdr agent` / `pane` / `tab` 不带子命令直接跑，就是用法手册。
-- 前置：`test "${HERDR_ENV:-}" = 1`；**不要跑裸 `herdr`**（会 attach TUI）。
-- 两条最常见错误：① 给 `agent prompt` 加 `--wait` → block 当前会话；② 忘了 poll —— 用 `herdr agent list` 看 state（`done` = 干完你还没读；`blocked` = 在等你回答）。
-- **与 intercom 分工（控制面 / 消息面）**：herdr-dispatch 管生命周期（spawn、pane 摆位、job store、collect 归档）；intercom 管内容（回报、批复、决策、取消）。
-  - 同一任务只走一条通路投递，勿双投。
-  - 任务书写死一行：「做完 intercom send 回 captain（短 id 用 `intercom list` 现取）」。回报自动注入并唤醒 captain —— 收结果靠推送，不轮询；`collect` 只做 pane 转储归档。
-  - 后续交互（追问、改稿、批复）用 `intercom send` 发同一会话短 id，复用长驻 pane 上下文；短任务的频道确认并进任务书，不单发（快 worker 可能已干完）。
-  - `watch` 可省：fleet 快照依赖 herdr（出过 1ms 超时故障）；`intercom list` 能看 live 状态（thinking / tool:xxx）与 pane 位置，足以补位。
+- 用户授权委派后，在当前 Pi 会话调用 `pi-subagents` 的 `subagent` 工具。单项任务直接指定角色和任务，默认使用后台执行。参数用 `/subagents-guide` 或包内 skill 核对。
+- `subagent`、`subagents_enable` 与 supervisor 工具仅供模型直接调用，不能从 codemode 搜索或调用。入口不可用时报告缺失；不得另起 Pi CLI、RPC 或其它后端代替当前会话派发。
+- 父子任务的结果、进展和问答使用原生完成通知、`contact_supervisor` 与 `subagent_supervisor`。Fleet 只显示当前父会话拥有的任务；普通异步任务靠完成通知唤醒，不循环轮询。
+- worker 模型：本次调用的显式模型优先，其次配置的 worker/defaultModel。没有可用配置时先报告，不能自行选择父会话或 CLI 默认模型。配置真源是 `~/.pi/agent/settings.json` 的 `subagents` 段。
+- 内置 Pi 角色通过 `inheritProjectContext: true` 和 `inheritGlobalContext: true` 继承项目与全局规则，包括下文的系统级安装禁令。新增自定义角色也要配置这两项。
+- Herdr 负责终端、tab、pane 和独立 CLI 会话。操作前运行 `test "${HERDR_ENV:-}" = 1`，通过后用 `herdr --skill` 现取官方正文；`herdr agent`、`pane`、`tab` 无子命令时显示用法。不要运行裸 `herdr`。
+- 当前父会话内用 `/subagents-fleet` 查看任务；选中运行中的后台子任务，按 `H` 打开 Herdr inspector。监控窗格展示运行记录，不是完整子会话的交互界面。
+- intercom 仅用于独立会话之间的交流；同一项任务只投递一次。父子任务使用原生完成通知，不再重复发送 intercom 完成消息。
+- 任务书写清允许改动的路径、交付物和验证标准。并行写入范围互不重叠，合并串行处理。生命周期结束后仍须验收产出。`blocked` 保留人工关卡，投递超时先检查记录再决定，不能盲目重发。
+- `herdr-dispatch` 与依赖它的 `herdr-swarm` 已停用部署。源码和历史保留；日常协作使用上述入口。
 
 
 ## External Search (GitHub)

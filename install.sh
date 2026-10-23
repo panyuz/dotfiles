@@ -28,8 +28,8 @@ link "$DOTFILES/mac/starship/starship.toml"  "$HOME/.config/starship.toml"
 # pi 用户级 extension（2026-10-11 起）：只 link 本仓库里的扩展，不做整目录循环。
 # ⚠️ ~/.pi/agent/extensions/herdr-agent-state.ts 是 herdr 官方集成的副本
 #    （herdr 自己安装并管理，重装/升级会覆盖）—— 不纳管，也不要被本循环覆盖。
-# 2026-10-12 停用：herdr-watch 改名 herdr-watch.ts.retired（躲开下面的 *.ts 通配，不再链接）——
-#   功能已被 herdr-dispatch 的 watch 取代；它看不到 TUI 命令是已知盲区。
+# herdr-watch 保留为 *.retired 历史文件，不参与部署。
+# Pi 子任务由 pi-subagents 管理，Herdr 命令用 herdr --skill 现取。
 for ext_file in "$DOTFILES"/mac/pi/agent/extensions/*.ts; do
   [ -e "$ext_file" ] || continue
   link "$ext_file" "$HOME/.pi/agent/extensions/$(basename "$ext_file")"
@@ -52,6 +52,10 @@ done
 for skill_dir in "$DOTFILES"/mac/skills/*/; do
   [ -d "$skill_dir" ] || continue
   name="$(basename "$skill_dir")"
+  # 2026-10-23：只停用部署，保留旧 skill 源码和未提交改动。
+  case "$name" in
+    herdr-dispatch|herdr-swarm) continue ;;
+  esac
   link "${skill_dir%/}" "$HOME/.pi/agent/skills/$name"
   if [ -d "$HOME/.gemini/antigravity-cli" ]; then
     link "${skill_dir%/}" "$HOME/.gemini/antigravity-cli/skills/$name"
