@@ -10,27 +10,15 @@
 
 - 搜索：先用 `grep` 或 `find`（fff 插件接管：frecency 排序、模糊匹配）。一次调用可含多个 term（OR）。
 - 读文件：用 `read` 的 `offset`/`limit`，只读 match 附近。已知文件在 workspace 之外时用绝对路径。
-- 看 JSON 用 `jq` 或内置 `read`。
 - 只有 `grep`/`find`/`read` 做不到时才用 `bash`。
 
-## Agent 协作
+## 子任务 / 并行任务
 
-- 只有用户已授权委派才用子任务；直接执行是默认。单项任务直接派发：
-  `subagent({ agent: "worker", task: "…", async: true })`。
-- 多步、并行或流程不确定时，先按 topic 读官方参考：
-  `subagent({ action: "guide", options: { topic: "workflows" } })`。
-  常用 topic：`workflows`（流程）、`agents`（角色）、`tool-reference`（全部参数）。普通单项任务不先读手册。
-- 参数报错或字段不确定时，用 `action: "guide"` 读单一 topic 或 `<topic>/<section>`；不猜参数，不用 CLI、RPC 或其它后端顶替。用户侧入口是 `/subagents-guide [topic]`。
-- 当前上下文没有 `subagent` 入口时，可调用一次 `subagents_enable({})`；仍不可用就报告并停止。
-- `subagent`、`subagents_enable` 与 supervisor 工具只由模型直接调用，codemode 不能搜索或调用。
-- 包内 `pi-subagents` skill 讲派发模式；`action: "guide"` 给当前安装版本的权威参考。两者都按需加载。
-- 父子通信用原生通道：子任务用 `contact_supervisor`，父会话用 `subagent_supervisor` 与完成通知；原生通道不需要 `pi-intercom`。`intercom` 只用于独立会话之间，同一任务只投递一次。
-- Fleet 只显示当前父会话的任务。用 `/subagents-fleet` 查看；选中运行中的任务按 `H` 打开 Herdr inspector。监控窗格只展示运行记录，不能交互。异步任务靠完成通知唤醒，不轮询。
-- worker 模型：本次调用的显式模型优先，其次配置的 worker/defaultModel。没有可用配置时先报告，不能自行选择父会话或 CLI 默认模型。配置真源是 `~/.pi/agent/settings.json` 的 `subagents` 段。
-- 内置 Pi 角色用 `inheritProjectContext: true` 和 `inheritGlobalContext: true` 继承项目与全局规则，含系统级安装禁令。新增自定义角色也要配置这两项。
-- 任务书写清允许改动的路径、交付物和验证标准。并行写入范围互不重叠，同一范围同时只有一个 writer；合并串行处理。生命周期结束后仍须验收产出。`blocked` 保留人工关卡；投递超时先检查记录再决定，不盲目重发。
-- Herdr 负责终端、tab、pane 和独立 CLI 会话。操作前运行 `test "${HERDR_ENV:-}" = 1`，通过后用 `herdr --skill` 现取官方正文；`herdr agent`、`pane`、`tab` 无子命令时显示用法。不要运行裸 `herdr`。
-- `herdr-dispatch` 与依赖它的 `herdr-swarm` 已停用部署；源码和历史保留。日常协作使用上述入口。
+- 主代理使用高成本模型时，优先将边界清楚的检索、实现和验证交给低成本子代理。主代理负责拆分、决策和验收。用户明确指定执行方式时，按要求执行。
+- 简短回答、即时判断，以及交接成本高于执行成本的操作，由主代理直接完成。需要反复同步背景的工作不要强行拆分。
+- 独立分支可并行处理；有依赖的步骤顺序执行。按上下文和交付边界拆分，不为角色名称增加任务层级。
+- 不默认追加审查或汇总子任务。仅在需要独立判断、整合多份结果，或验证重要改动时增加。
+- 任务书明确允许范围、禁止事项、时限和交付物。到时保存已有产物并收尾，记录改动、验证结果、未完成项和证据路径。
 
 ## External Search (GitHub)
 
