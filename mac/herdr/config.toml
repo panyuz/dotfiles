@@ -96,6 +96,8 @@ description = "New OMP pane"
 
 # ── UI ─────────────────────────────────────────────────
 [ui]
+# 2026-10-25：26→34 列，给 $summary 跑批标签留宽度（revert 删掉这行即回默认 26）
+sidebar_width           = 34
 sidebar_start_collapsed = false
 sidebar_collapsed_mode  = "compact"
 pane_borders            = true
