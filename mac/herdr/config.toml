@@ -111,10 +111,15 @@ tab_bar_right           = [{ type = "zoom" }, { type = "datetime" }]
 agent_panel_sort = "priority"
 show_agent_labels_on_pane_borders = true
 [ui.sidebar.agents]
+# 2026-10-25：subagents 状态排版。
+# 行1 状态点+定位；行2 agent+状态词（state_text 含 ⏳ 跑批标签时隐藏，防与行3重复）；
+# 行3 $summary 活动标签独占整行（蓝），含 ⚠ 转红加粗；无活跃 run 时整行消失。
+# machine 未写：当前单机；以后加多机需显式加回该 token。
 row_gap = 0
 rows = [
-  ["state_icon", "state_text", "workspace", "tab"],
-  ["agent"],
+  ["state_icon", "workspace", "tab"],
+  ["agent", { token = "state_text", rules = [{ contains = "⏳", hide = true }] }],
+  [{ token = "$summary", fg = "#89b4fa", rules = [{ contains = "⚠", fg = "#f38ba8", bold = true }] }],
 ]
 
 # Per-agent custom rows
