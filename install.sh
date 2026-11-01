@@ -56,7 +56,10 @@ for skill_dir in "$DOTFILES"/mac/skills/*/; do
   case "$name" in
     herdr-dispatch|herdr-swarm) continue ;;
   esac
-  link "${skill_dir%/}" "$HOME/.pi/agent/skills/$name"
+  # herdr-app-agy 专供 agy（Pi 侧在全局 AGENTS.md 约定查 `herdr-app --skill`/`hc --skill` 现取，无需静态 skill）
+  if [ "$name" != "herdr-app-agy" ]; then
+    link "${skill_dir%/}" "$HOME/.pi/agent/skills/$name"
+  fi
   if [ -d "$HOME/.gemini/antigravity-cli" ]; then
     link "${skill_dir%/}" "$HOME/.gemini/antigravity-cli/skills/$name"
   fi

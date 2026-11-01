@@ -33,7 +33,7 @@ dotfiles/
 > **2026-09-18 变更**：全局 skill 真源由 `mac/omp/skills/` 迁到 **`mac/skills/`**（名实相符：herdr-dispatch、dotfiles 都不属于 omp），
 > 部署方式从「omp 真源 + pi 实体副本」改为 **单一真源 + symlink 双端**；omp 已弃用，install.sh 不再纳管 `~/.omp/*`。
 
-> **2026-11-01 变更**：新增 **herdr-app** 全局 skill（覆盖 `herdr-app` 窗口/标签页/分屏/mod 与 `hc` 终端/agent/会话管理两层架构）。`install.sh` 自动链接至 Pi 与 agy 双端；`~/.gemini/antigravity-cli/settings.json` 放行 `herdr-app` 与 `hc` 命令权限。
+> **2026-11-01 变更**：新增 **herdr-app-agy** 全局 skill（专供 agy，覆盖 `herdr-app` 窗口/标签页/分屏/mod 与 `hc` 终端/agent/会话管理两层架构；Pi 侧按全局 AGENTS.md 约定查 `herdr-app --skill`/`hc --skill` 现取，不向 Pi 部署）；`~/.gemini/antigravity-cli/settings.json` 放行 `herdr-app` 与 `hc` 命令权限。
 
 > **2026-10-23 变更**：`herdr-dispatch` 与依赖它的 `herdr-swarm` 仅停用 Pi / agy 部署软链接，`mac/skills/` 源码及未提交改动保留。`install.sh` 跳过这两个名称，避免重建链接。Pi 子任务使用当前会话的 pi-subagents；Herdr 操作用 `herdr --skill` 现取官方正文。
 

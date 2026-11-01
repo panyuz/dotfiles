@@ -1,5 +1,5 @@
 ---
-name: herdr-app
+name: herdr-app-agy
 description: >-
   Drive the Herdr desktop application (`herdr-app`) and its persistent terminal daemon (`hc` / herdr-core).
   Use when managing Herdr windows, spaces, tabs, panes, splits, layout, UI mods, window screenshots
