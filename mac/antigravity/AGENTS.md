@@ -10,10 +10,10 @@
 
 ## 工具使用
 
-- 读文件用 `read_file`。读取 workspace 外的文件使用绝对路径。大文件用 `StartLine` 和 `EndLine` 分段读取。
-- 改文件用 `edit_file`。精确匹配目标字符串，执行单段代码替换。保留已有注释与文档。
-- 建文件用 `write_file`。非 artifact 文件严禁添加 `ArtifactMetadata`。
-- 执行命令用 `run_command`。仅在专用文件工具无法完成任务时调用。同步任务设置 `WaitMsBeforeAsync` 为 5000–10000。严禁使用 shell sleep 轮询。
+- 读文件用 `read_file`。读取 workspace 外文件使用绝对路径。大文件用 `StartLine` 和 `EndLine` 分段（单次上限 800 行）。
+- 改文件用 `edit_file`。精确匹配目标字符串（含前导空白），执行单段连续替换。确保 Target 上下文唯一，避免误替多处。保留已有注释与文档。
+- 建文件用 `write_file`。覆盖已存在文件必须显式指定 `Overwrite: true`。非 artifact 文件严禁添加 `ArtifactMetadata`。
+- 执行命令用 `run_command`。必须传 `toolSummary`（2–5 词名词短语，首字母大写，如 'Unit test execution'）。命令在独立会话执行，环境变量与 `cd` 不跨调用持久化。同步任务设置 `WaitMsBeforeAsync` 为 5000–10000。严禁使用 shell sleep 轮询。
 - 搜索优先在终端执行 `rg`、`fd`、`find` 或 `grep`。
 - **工件（Artifacts）纪律**。仅用于需要持久展示的大型报告、多步骤方案或复杂图表。日常简答、代码段、提问和沟通直接输出文本，严禁创建无意义工件。
 
@@ -21,7 +21,8 @@
 
 主代理负责用户沟通、决策、综合与最终验收，默认直接执行。用户或技能明确授权后，可派发子任务。
 
-- **子代理派发**。使用 `invoke_subagent`。明确指定 `Role`、`TypeName` 与任务 `Prompt`。默认模型继承主代理（`Model: "inherit"`）。
+- **子代理派发**。使用 `invoke_subagent`。明确指定 `Role`（2–5 词职位描述）、`TypeName` 与任务 `Prompt`。默认模型继承主代理（`Model: "inherit"`）。
+- **消息通信红线**。`send_message` 仅用于代理间通信。严禁用 `send_message` 与人类用户沟通；与用户沟通直接在文本流输出。
 - **响应式唤醒**。子代理启动后等待系统消息推送。严禁在主代理中循环查询状态或轮询等待。
 - **通用边界**。子代理默认不得再派发。同一工作区只设一个写手。并行修改使用独立分支或独立工作区。主代理独立核实与验收产物后再交付。
 - **失败与阻断**。遇到权限阻塞或工具失败，立即停止受影响任务并报告。不盲目重试，不静默更换模型，不绕过安全检查。只清理本次创建且已验证的资源。
