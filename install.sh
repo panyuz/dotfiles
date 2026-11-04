@@ -19,6 +19,11 @@ link() { # link <repo内真源> <目标路径>
 link "$DOTFILES/mac/ghostty/config"          "$HOME/.config/ghostty/config"
 link "$DOTFILES/mac/herdr/config.toml"       "$HOME/.config/herdr/config.toml"
 
+# 全局 agent 指令 / 规则（Pi 与 Antigravity CLI/IDE 全局生效）
+link "$DOTFILES/mac/pi/agent/AGENTS.md"      "$HOME/.pi/agent/AGENTS.md"
+link "$DOTFILES/mac/antigravity/AGENTS.md"   "$HOME/.gemini/AGENTS.md"
+link "$DOTFILES/mac/antigravity/AGENTS.md"   "$HOME/.gemini/config/AGENTS.md"
+
 # zsh + starship（2026-10-16 纳入，shell 侧配置也进仓库，换机可恢复）：
 #   ~/.zshrc = 交互式 shell 全部配置（别名、eza 颜色 EZA_COLORS、starship init、herdr 标题钩子）
 #   ~/.config/starship.toml = starship 官方 gruvbox-rainbow 预设
@@ -60,6 +65,10 @@ for skill_dir in "$DOTFILES"/mac/skills/*/; do
   if [ "$name" != "herdr-app-agy" ]; then
     link "${skill_dir%/}" "$HOME/.pi/agent/skills/$name"
   fi
+  # Loop 技能仅供 Pi 手动调用；agy 不支持该 frontmatter 约束。
+  case "$name" in
+    rex-loop|herdr-loop) continue ;;
+  esac
   if [ -d "$HOME/.gemini/antigravity-cli" ]; then
     link "${skill_dir%/}" "$HOME/.gemini/antigravity-cli/skills/$name"
   fi

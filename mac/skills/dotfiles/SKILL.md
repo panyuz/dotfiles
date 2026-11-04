@@ -18,6 +18,7 @@ dotfiles/
 │   ├── zsh/zshrc             # 交互式 shell 全部配置（symlink 到 ~/.zshrc；含 eza 颜色、starship init、herdr 标题钩子）
 │   ├── starship/starship.toml # 提示符主题（symlink 到 ~/.config/starship.toml，gruvbox-rainbow 预设）
 │   ├── pi/agent/AGENTS.md    # pi 全局指令（symlink 到 ~/.pi/agent/AGENTS.md）
+│   ├── antigravity/AGENTS.md # agy 全局指令（symlink 到 ~/.gemini/AGENTS.md 与 ~/.gemini/config/AGENTS.md）
 │   ├── skills/<name>/        # 全局 skill 真源（目录级 symlink → ~/.pi/agent/skills/ 与 ~/.gemini/antigravity-cli/skills/）
 │   └── omp/                  # ⚠️ omp 已弃用（2026-09-18），保留仅作历史参考
 │       ├── agent/APPEND_SYSTEM.md  # omp 系统提示（曾 symlink 到 ~/.omp/agent/）
@@ -32,6 +33,8 @@ dotfiles/
 
 > **2026-09-18 变更**：全局 skill 真源由 `mac/omp/skills/` 迁到 **`mac/skills/`**（名实相符：herdr-dispatch、dotfiles 都不属于 omp），
 > 部署方式从「omp 真源 + pi 实体副本」改为 **单一真源 + symlink 双端**；omp 已弃用，install.sh 不再纳管 `~/.omp/*`。
+
+> **2026-11-04 变更**：新增 Antigravity 全局指令真源 `mac/antigravity/AGENTS.md`，参考 Pi 全局指令并对齐 agy 原生工具栈与响应式子代理机制，通过 `install.sh` 分别 symlink 至 `~/.gemini/AGENTS.md`（CLI 发现）与 `~/.gemini/config/AGENTS.md`（IDE 发现）。
 
 > **2026-11-01 变更**：新增 **herdr-app-agy** 全局 skill（专供 agy，覆盖 `herdr-app` 窗口/标签页/分屏/mod 与 `hc` 终端/agent/会话管理两层架构；Pi 侧按全局 AGENTS.md 约定查 `herdr-app --skill`/`hc --skill` 现取，不向 Pi 部署）；`~/.gemini/antigravity-cli/settings.json` 放行 `herdr-app` 与 `hc` 命令权限。
 
