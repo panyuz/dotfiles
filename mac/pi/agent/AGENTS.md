@@ -1,42 +1,44 @@
 # Global Instructions
 
-## Response Style (highest priority; all projects)
+## 回复风格（最高优先级，适用所有项目）
 
-回复用中文，技术名可保留英文。全篇遵守 ASD-STE100 标准：短句、一义一句、主动语态。
+用中文回复。技术名可保留英文。全文遵守 ASD-STE100：使用短句。每句只表达一个意思。使用主动语态。
 
-调研先定范围与时限；到时保存已有产物并收尾。范围要扩大时先报告。
+调研前写明范围、时限和交付物。到时保存产物并结束。扩大范围前先报告。
 
-## Tool Use
+## 工具使用
 
-- 搜索：先用 `grep` 或 `find`（fff 插件接管：frecency 排序、模糊匹配）。一次调用可含多个 term（OR）。
-- 读文件：用 `read` 的 `offset`/`limit`，只读 match 附近。已知文件在 workspace 之外时用绝对路径。
-- 只有 `grep`/`find`/`read` 做不到时才用 `bash`。
+- 本地文件搜索先用 `grep` 或 `find`。这两个工具由 fff 提供，支持 frecency 排序和模糊匹配。一次调用可含多个 term（OR）。
+- 用 `read` 的 `offset` 和 `limit` 读取匹配位置。读取 workspace 外的文件时使用绝对路径。
+- `grep`、`find` 和 `read` 无法完成任务时，才用 `bash`。
 
-## 子任务 / 并行任务
+## 代理分工与渐进式发现
 
-- 主代理使用高成本模型时，优先将边界清楚的检索、实现和验证交给低成本子代理。主代理负责拆分、决策和验收。用户明确指定执行方式时，按要求执行。
-- 简短回答、即时判断，以及交接成本高于执行成本的操作，由主代理直接完成。需要反复同步背景的工作不要强行拆分。
-- 独立分支可并行处理；有依赖的步骤顺序执行。按上下文和交付边界拆分，不为角色名称增加任务层级。
-- 不默认追加审查或汇总子任务。仅在需要独立判断、整合多份结果，或验证重要改动时增加。
-- 任务书明确允许范围、禁止事项、时限和交付物。到时保存已有产物并收尾，记录改动、验证结果、未完成项和证据路径。
+主代理负责用户沟通、综合和最终验收，默认直接执行。用户、任务书或用户已调用的技能明确授权后，可派发子任务。派发不扩大目标或操作权限。
 
-## External Search (GitHub)
+- **普通子任务。** 使用 pi-subagents。派发前读取其 skill，按需查 guide。
+- **长期任务。** 仅在用户手动调用 loop 技能后，按该技能执行分工与跟踪流程。
+- **通用边界。** 子代理默认不得再派发。同一工作区只设一个写手。并行写入使用独立工作区。核实实际模型、启动和首任务送达。主代理读取产物，独立验收后再交付。
+- **失败与清理。** 失败或权限阻塞时，停止受影响任务并报告。不盲目重派，不静默更换模型或启动路径，不绕过权限。只清理本次创建且已验收的资源。
 
-- search 用 `gh`，deep read 用 `fetch_content`。
-- `gh` 已安装（Homebrew，`/opt/homebrew/bin/gh`），不得重装。
-- 认证：wrapper `~/.pi/agent/bin/gh` 在 run time 从 KeePassXC 的 `apienv` vault、`github` entry 取 `GH_TOKEN`。token 不写入 disk。pi 会话里 `gh` 直接命中这个 wrapper。private repo 和高 rate limit 必须带 token。
-- Search 用 `gh search repos|code|issues|commits`，可按 star、language、更新时间筛选；code search 可用。
-- Rate limit：core 5000/h、search 30/min、code search 10/min；未认证时 60/h、10/min、code search 不可用。
-- Deep read：`fetch_content` 内部用 `gh` 完成 `gh repo clone`、PR parse、issue parse。没有 `gh` 时 fallback 到 `git clone`，这时读不了 private repo。
-- 换 token：GitHub 发新 token 后，只更新 KeePassXC 的 `github` entry；wrapper 不用改。
+只读取当前任务所需的 skill、工具说明和官方手册。Rex 操作读 `rex` skill；Herdr 编排读 `hc --skill`，窗口和布局读 `herdr-app --skill`。编译、下载和测试可直接运行程序。
 
-## Skill Installation
+## GitHub 检索
 
-- 安装一律用 copy：从 official source（GitHub repo 或 official skill market）取 skill 目录，copy 到目标 skill 目录（例如 `~/.pi/agent/skills/<name>`）。然后按需做本机适配（KeePassXC key injection、`uv` dependency 声明）。方法与案例见 dotfiles 的 `mac/omp/search-skills-deploy.md`。
-- 不用 `npx skills add`：它会 copy 到本机检测到的多个 agent 目录，且不带 local patch；`skills remove -g` 还会删除 main deployment。
+- 搜索用 `gh search repos|code|issues|commits`。可按 star、language 和更新时间筛选。
+- `gh` 位于 `/opt/homebrew/bin/gh`。不得重装。
+- pi 会话中的 `gh` wrapper 从 KeePassXC 的 `apienv` 库读取 `github` 条目并注入 `GH_TOKEN`。Token 不写入磁盘。访问 private repo 和使用较高 rate limit 需要 token。
+- 认证限额：core 5000/h、search 30/min、code search 10/min。未认证限额：core 60/h、search 10/min；code search 不可用。
+- 读取 repo、PR 和 issue 正文用 `fetch_content`。它使用 `gh` 克隆或解析 GitHub 内容。没有 `gh` 时，它回退到 `git clone`，无法读取 private repo。
+- 更换 token 时，只更新 KeePassXC 的 `github` 条目。
 
-## Local Rules (macOS)
+## 技能安装
 
-- remote git 操作失败时（push、pull、SSH permission error）：立即停止。不得 retry，不得换 remote、换 protocol 或试其它 SSH key。提醒用户 unlock KeePassXC，然后等确认。
-- 不得做 system-level install（`pip install`、`npm -g`、`brew install` 等）。Python 一律用 `uv`（含 `-c` one-liner 和 heredoc），不得用 system python3；项目 Python 环境由 `uv` 管理。
-- Node 用 `bun`、`bunx` 或 `npx`，在项目内执行。
+- 安装技能一律从官方 GitHub repo 或官方技能市场复制技能目录到目标目录，例如 `~/.pi/agent/skills/<name>`。按需适配 KeePassXC 密钥注入和 `uv` 依赖。方法见 dotfiles 的 `mac/omp/search-skills-deploy.md`。
+- 不用 `npx skills add` 或 `skills remove -g`。前者会复制到多个 agent 目录且不带本机补丁；后者可能删除主部署。
+
+## 本机规则（macOS）
+
+- remote git 操作失败时立即停止，包括 push、pull 和 SSH 权限错误。不得重试，不得换 remote、protocol 或 SSH key。提醒用户解锁 KeePassXC，然后等待确认。
+- 不得安装系统级软件，包括 `pip install`、`npm -g` 和 `brew install`。Python 只用 `uv`，包括 `-c` 和 heredoc。不得用系统 `python3`。项目 Python 环境由 `uv` 管理。
+- Node 工具链用 `bun`、`bunx` 或 `npx`。在项目内运行。

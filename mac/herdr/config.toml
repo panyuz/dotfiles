@@ -146,8 +146,11 @@ rows = [
 #   terminal = 向外部终端发 OSC 9，但 Ghostty 对「聚焦面」来的通知会在 3 秒后删掉
 #              （macos/Sources/Ghostty/Surface View/SurfaceView_AppKit.swift:1776）→ 基本看不到；
 #   system   = 走 macOS 通知中心，Ghostty 无权删。本次选它。
-# 点通知跳回 Ghostty 需要 terminal-notifier（brew 装，本机未装）→ 没装时 herdr 回退
-# osascript，通知会显示为 Script Editor，点击不会切回终端。装不装由你定，未装也能看到横幅。
+# 2026-10-26：装了 terminal-notifier（brew，3.1.0，/opt/homebrew/bin）。
+#   system 通知现在走它：图标可换（已把它的 Terminal.icns 换成 Ghostty.icns，
+#   原件备份在 ~/.config/herdr/terminal-notifier-Terminal.icns.bak；brew upgrade
+#   会覆盖，重贴一次即可），点通知可激活 Ghostty。首次授权是 open 一次 app 触发的。
+#   未装时的回退链：herdr → osascript，通知显示为 Script Editor，点击不切终端。
 # 下方 [ui.toast.herdr] 只对 delivery="herdr" 生效，留着无害。
 [ui.toast]
 delivery = "system"
