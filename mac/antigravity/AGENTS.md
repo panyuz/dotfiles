@@ -29,6 +29,7 @@
 - 后台进程与 agent 编排使用 `hc`（如 `hc ls`、`hc run`、`hc send`）。
 - 窗口、工作区、标签页与分屏操作使用 `herdr-app do ...`。
 - 严禁直接执行不带子命令的裸 `herdr` 或裸 `herdr-app`。
+- **Session 与 Tab 命名**：执行长任务前，必须显式为当前会话（Session）与 Herdr Tab 命名。必须使用中文命名，推荐携带 Emoji 前缀（如 `herdr-app do tab.rename --name "🔍 任务中文名"`；会话使用 `/rename <中文名>`）。新建 Tab 或后台进程传 `--name "..."`。
 
 ## 本机规则（macOS 硬红线）
 
