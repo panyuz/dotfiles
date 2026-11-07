@@ -100,6 +100,9 @@ hc send helper "Inspect src/x.py only. Report findings with hc send $HC_TERMINAL
 
 # Or direct launch with initial task
 hc run --bg --name review --cwd /path/to/repo claude "Review changes. Report with hc send $HC_TERMINAL_ID."
+
+# Using agy (Antigravity background worker with auto-permissions)
+hc run --bg --name agy-worker --cwd /path/to/repo agy --dangerously-skip-permissions -i "Inspect src/x.py only. Report findings with hc send $HC_TERMINAL_ID when done."
 ```
 
 ### Reactive Waiting (Never Poll or Sleep)
