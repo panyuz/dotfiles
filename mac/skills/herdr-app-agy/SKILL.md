@@ -22,7 +22,7 @@ Your terminal identifier in Herdr is `$HC_TERMINAL_ID` (e.g. `t1g`, not a pane I
 | Objective | Tool | Key Command |
 |---|---|---|
 | Open visible Tab/Split for user inspection | `herdr-app` | `herdr-app do tab.new --name "🔍 中文名" ...` / `pane.split ...` |
-| Rename visible Tab for long-running task | `herdr-app` | `herdr-app do tab.rename --name "🔍 任务中文名"` |
+| Rename visible Tab for task | `herdr-app` | `herdr-app do tab.rename --name "🔍 任务中文名"` |
 | Inspect window layout, spaces, tabs, pane IDs | `herdr-app` | `herdr-app ls` / `herdr-app status` |
 | Take full-resolution window screenshot (verify UI) | `herdr-app` | `herdr-app shot [file.png]` |
 | Test or validate a mod | `herdr-app` | `herdr-app check ~/.config/herdr-app/mods/<name>` |
@@ -68,8 +68,8 @@ herdr-app commands    # Full list of available app commands and arguments
   herdr-app do agent.focus --terminal "<terminal_id>"
   ```
 
-### Tab & Session Naming (Long-Running Tasks)
-When launching or executing long-running tasks (e.g., deep research, data modeling, multi-round review, batch coding):
+### Tab & Session Naming
+When starting or executing any task:
 - **Mandatory Chinese Naming**: Explicitly name the Herdr Tab / session in Chinese.
 - **Emoji Support**: Prefix Tab names with an Emoji to visually represent the task category (e.g. `🔍 综述初稿`, `📊 统计建模`, `✍️ 论文引言`, `🧪 回归测试`).
 - **Rename Current / Active Tab**:
@@ -165,10 +165,10 @@ hc rm <terminal_id>
 5. **UI & Mod Changes**:
    - Always run `herdr-app check <mod_dir>` before considering mod work complete.
    - Emergency reset shortcut: `ctrl-alt-shift-escape` restores default layout and keybindings.
-6. **Mandatory Chinese Naming for Long-Running Tasks**:
-   - When executing long-running tasks, you MUST name the Herdr Tab and session in **Chinese**.
+6. **Mandatory Chinese Naming for All Tasks**:
+   - When executing any task, you MUST name the Herdr Tab and session in **Chinese**.
    - Tab names can and should include an **Emoji** prefix (e.g. `🔍 综述初稿`, `📊 统计建模`, `✍️ 论文引言`).
-   - Use `--name "..."` during `tab.new` / `hc run`, or run `herdr-app do tab.rename --name "..."` on the active tab before running long operations.
+   - Use `--name "..."` during `tab.new` / `hc run`, or run `herdr-app do tab.rename --name "..."` on the active tab when starting.
 7. **Background agy Delegation**:
    - Run silent background workers via `hc run --bg` (never create GUI tabs for background subagents).
    - Always pass `--dangerously-skip-permissions -i`.
