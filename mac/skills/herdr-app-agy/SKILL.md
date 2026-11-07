@@ -91,39 +91,22 @@ This renders the app's last frame at native resolution without desktop permissio
 ## 3. Terminal & Agent Orchestration (`hc`)
 
 ### Starting Interactive Agents
-Always run worker agents in `--bg` and in interactive mode (never `-p` or one-shot print mode), so they remain steerable for subsequent turns.
+Always run worker agents in `--bg` and in interactive mode (never `-p` or one-shot print mode).
 
-#### 1. Running agy as a Silent Background Worker (Standard Pattern)
-When Antigravity (agy) delegates an autonomous background task to another agy instance:
+#### 1. Silent agy Background Worker
 ```sh
 # Launch in background with auto-permissions and interactive mode:
 hc run --bg --name agy-worker --cwd /path/to/repo agy --dangerously-skip-permissions -i "Task prompt. Report findings with hc send $HC_TERMINAL_ID when done."
 
-# Reactively wait for turn completion:
+# Wait, read output, send follow-ups, and clean up:
 hc wait agy-worker
-
-# Read results from screen / history:
 hc read --lines 100 agy-worker
-
-# Send multi-turn follow-up instruction:
-hc send agy-worker "Proceed with the next step."
-
-# Clean up terminal once task is completed:
+hc send agy-worker "Next step instruction"
 hc kill agy-worker && hc rm agy-worker
 ```
+- **Transient `blocked (auth)`**: If `<hc>... is blocked (auth)...</hc>` arrives during startup, ignore it and continue `hc wait <t>` (resolves automatically in <1s; verify via `hc get <t>`).
 
-**Key Parameters for agy Workers:**
-- `--dangerously-skip-permissions`: **Crucial**. Auto-approves tool execution requests, preventing background workers from hanging on interactive permission prompts.
-- `-i` (`--prompt-interactive`): Launches with initial task while keeping the session open for steerability and subsequent turns.
-- `--bg`: Runs headless in `herdr-core` without opening or cluttering user-facing GUI tabs.
-
-**Understanding Transient `blocked (auth)` Handshake Notices:**
-- `agy` natively implements OSC 7501 terminal status reporting (`]7501;`).
-- During the first ~0.5s of cold startup (while validating Google account credentials), `agy` briefly emits a `blocked (auth)` status before instantly transitioning to `working` and `done`.
-- `herdr-core` queues an asynchronous notification to the parent terminal: `<hc><id> ... is blocked (auth)...</hc>`.
-- **Handling**: This is a harmless cold-start handshake echo. **Do not terminate or interrupt the process**. Verify status via `hc get <t>` (it will show `working` or `done`), and proceed with standard `hc wait <t>`.
-
-#### 2. Running Other Agents (pi, claude)
+#### 2. Other Agents (pi, claude)
 ```sh
 # Using pi
 hc run --bg --name helper --cwd /path/to/repo pi --provider deepseek --model deepseek-flash
@@ -186,8 +169,8 @@ hc rm <terminal_id>
    - When executing long-running tasks, you MUST name the Herdr Tab and session in **Chinese**.
    - Tab names can and should include an **Emoji** prefix (e.g. `🔍 综述初稿`, `📊 统计建模`, `✍️ 论文引言`).
    - Use `--name "..."` during `tab.new` / `hc run`, or run `herdr-app do tab.rename --name "..."` on the active tab before running long operations.
-7. **Background agy Delegation & Autonomy**:
-   - For autonomous background sub-tasks, prioritize silent background workers via `hc run --bg` instead of `tab.new` to prevent GUI clutter.
-   - Background `agy` workers MUST be started with `--dangerously-skip-permissions -i` to ensure unattended execution.
-   - Treat transient `<hc>... is blocked (auth)...</hc>` notices as benign cold-start handshake echoes; verify state with `hc get <t>` before taking any corrective action.
-   - Always cleanly dispose of child terminals via `hc kill <t> && hc rm <t>` once results are retrieved.
+7. **Background agy Delegation**:
+   - Run silent background workers via `hc run --bg` (never create GUI tabs for background subagents).
+   - Always pass `--dangerously-skip-permissions -i`.
+   - Ignore transient cold-start `blocked (auth)` notices; verify state with `hc get <t>`.
+   - Always clean up child terminals via `hc kill <t> && hc rm <t>` when done.
