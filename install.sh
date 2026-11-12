@@ -61,11 +61,11 @@ for skill_dir in "$DOTFILES"/mac/skills/*/; do
   case "$name" in
     herdr-dispatch|herdr-swarm) continue ;;
   esac
-  # herdr-app-agy 专供 agy（Pi 侧在全局 AGENTS.md 约定查 `herdr-app --skill`/`hc --skill` 现取，无需静态 skill）
-  if [ "$name" != "herdr-app-agy" ]; then
+  # herdr-app-agy 与 rex-loop-agy 专供 agy（Pi 侧在全局 AGENTS.md 约定现取，无需静态 skill）
+  if [ "$name" != "herdr-app-agy" ] && [ "$name" != "rex-loop-agy" ]; then
     link "${skill_dir%/}" "$HOME/.pi/agent/skills/$name"
   fi
-  # Loop 技能仅供 Pi 手动调用；agy 不支持该 frontmatter 约束。
+  # Pi 专属 Loop 技能跳过向 agy 部署；rex-loop-agy 专供 agy 部署
   case "$name" in
     rex-loop|herdr-loop) continue ;;
   esac
