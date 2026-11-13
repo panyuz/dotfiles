@@ -23,6 +23,17 @@
 
 只读取当前任务所需的 skill、工具说明和官方手册。Rex 操作读 `rex` skill；Herdr 编排读 `hc --skill`，窗口和布局读 `herdr-app --skill`。编译、下载和测试可直接运行程序。
 
+## Herdr-app 内命名
+
+仅在 Herdr-app 环境内执行。先用 `herdr-app ls` 核对当前 `HC_TERMINAL_ID`、标签页 ID 和子终端。
+
+- 主代理与子代理的会话显示名使用“emoji + 任务概要”。新建 Pi 会话用 `pi --name "📊 岗位入库"`；已有会话用 `/name 📊 岗位入库`。
+- 新建 Herdr 终端时，`hc run --name` 使用唯一的 1–32 位 `a-z`、`0-9`、`.`、`_`、`-`。以字母或数字开头，避开 `t7` 等终端 ID 格式。例如 `jobs-import-1`。
+- 对主终端和子终端执行 `hc label <终端ID> "where=📊 岗位入库"`，按各自任务填写名称。
+- 已有标签页执行 `herdr-app do tab.rename --id <标签页ID> --name "📊 岗位入库"`。只改对应标签页，不为命名新建标签页。共享标签页保留主任务名。
+- 用 `hc get <终端ID>` 和 `herdr-app ls` 核对结果。任务变化时更新会话显示名、任务标签和对应标签页名。
+- 保留已有终端 ID 和技术名，不为改名重建代理。通信使用终端 ID；远程使用完整地址。
+
 ## GitHub 检索
 
 - 搜索用 `gh search repos|code|issues|commits`。可按 star、language 和更新时间筛选。

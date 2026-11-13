@@ -1,6 +1,6 @@
 # Rex 本机文件回执
 
-仅在独立 session 缺少已验证的消息通道时使用。这里提供本机文件通知，不提供 Rex 或 Pi 的原生 supervisor，也不负责远程同步。
+本机 Rex 子任务使用文件回执，作为主动通知的补收和恢复依据。子代理主动发布回执；主代理运行等待器时由文件事件唤醒。文件回执不提供原生 supervisor 或远程同步，也不会自行唤醒未等待的主代理。
 
 ## 建立通道
 
@@ -10,10 +10,10 @@
 
 ```json
 {
-  "taskId": "inspect-api",
-  "attemptId": "attempt-1",
+  "taskId": "T02",
+  "attemptId": "A1",
   "status": "reported",
-  "reportPath": "/absolute/project/task-dir/reports/inspect-api-attempt-1.md"
+  "reportPath": "/absolute/project/task-dir/reports/T02-A1.md"
 }
 ```
 

@@ -1,84 +1,96 @@
 ---
 name: rex-loop-agy
-description: 手动运行 Rex 长期任务与大任务多代理循环。Gemini（Antigravity）作为主代理负责规划、拆分子任务与独立验收，子代理在同一 Rex session 的独立 tab 中运行快速模型（如 deepseek-flash 或 agy worker）。仅在用户显式要求使用 Rex 运行长期任务或大任务循环时触发。严禁自发自动调用。
+description: 手动运行 Rex 长期任务与大任务多代理循环。Gemini（Antigravity）作为主代理负责规划、拆分子任务与独立验收，默认在主 tab 同屏分屏派发子代理，主代理保留半屏。仅在用户显式要求使用 Rex 运行长期任务或大任务循环时触发。严禁自发自动调用。
 ---
 
 # Rex 长期任务（Gemini / Antigravity）
 
-仅在用户显式调用时使用。用户可提供任务书或已有任务目录。只要求查询状态或暂停时，只执行对应动作。
-主代理（Gemini）负责全局设计、任务拆分、偏差纠正与独立验收。子代理执行具体长任务，以减少主代理 token 消耗与上下文污染。
+仅在用户显式调用时使用。用户可提供任务书或已有任务目录。只要求状态或暂停时，只执行对应动作。
+
+先读 [Rex 主循环](rex-main-loop.md)。它负责计划、派发边界、验收、恢复与安全边界。本文只写 Rex 操作。需要字段示例时读 [任务记录示例](references/task-state.md)。需要回执细节时读 [Rex 文件回执](references/rex-reports.md)。`references` 是指向共享目录的软链，默认不改；用户明确要求时才改。
 
 ## 1. 准备
 
-1. **环境核对与命名**：
-   - 确定本任务的“emoji + 中文任务概要”。
-   - 运行 `rex whoami --json` 或检查环境变量，核实当前 Rex 服务器地址及主代理所在的完整 `session`、`window`、`block` ID。
-   - 显式命名主代理专属 tab：使用 `rex window rename "$REX_WINDOW" "<emoji> <任务概要>"`。
-   - 显式命名当前 Gemini 会话：使用 `/rename <中文名>`。
-   - 保持 Rex session 名称不变，除非用户要求改名。不要向主代理自己的 block 发送输入。
-2. **建立任务跟踪**：
-   - 阅读 [主循环约定](references/loop.md)。在项目任务目录建立或继续使用 `TODO.md`。
-   - 记录目标、范围、写入边界、验收标准、阶段时限、主代理终端 ID、状态和下一步。需要参考格式时阅读 [任务记录示例](references/task-state.md)。
-3. **拆分子任务**：
-   - 明确每个子任务的输入、`cwd`、写入边界、期限、产物、验收标准、任务 ID（如 `T01`）和尝试 ID（如 `A1`）。
-   - 同一工作区只设一个写手；并行写入使用独立工作区。子代理不得再次派发。
-4. **建立双向回报通道**：
-   - 记录报告绝对路径、回执绝对路径和主代理的完整 `session`、`window`、`block` ID。
-   - 本机文件回执按 [Rex 文件回执](references/rex-reports.md) 建立。
-   - 远程任务先验证远程回报通道；本机文件监听不能观察远程磁盘。通道未建立时不派发。
+1. 确定“emoji + 任务概要”。读当前 `rex` skill 及其官方正文。用 `rex whoami --json`、`rex block ls`、`rex session inspect` 核对主代理所在 session、window、block 的完整 ID。
+2. 把主代理专属 tab 改名为 `<emoji> <任务概要>`（`rex window rename -s "$REX_SESSION" <主代理window_id> "<emoji> <任务概要>"`）；共享 tab 保留整体任务名。显式命名当前 Gemini 会话：请用户执行 `/rename <中文名>`。Rex session 名称保持不变，除非用户要求。
+3. 按 [Rex 主循环](rex-main-loop.md) 第 1 节建立 `TODO.md`，记下 Rex 字段。
+4. 记下主代理 block ID 作为回报地址。主动通知是首选通道，文件回执是备用。远程任务先验证远程通道。
 
-## 2. 派发与命名
+## 2. 同屏分屏派发（默认）
 
-Rex session 是工作空间。保持其名称，除非用户要求改名。Rex window 是 tab。
-默认在主代理所在的同一 Rex session 中，为每个子代理创建独立后台 tab。用户指定其他位置时遵从用户指定。另建 Rex session 仅用于用户要求或任务确需隔离工作空间的场景。
+默认在主代理所在 tab 内分屏。主代理保留半屏。子代理占用右半区。
 
-主代理负责架构设计、任务拆分与结果验收。独立且无冲突的子任务初始即并行启动。无独立任务时不增加子代理。
+1. 第一个子代理：以主代理 block 为 anchor，向右分割，`--ratio 50`。
 
-每个子任务分配唯一任务 ID（如 `T01`、`T02`）。每次尝试分配尝试 ID（如 `A1`、`A2`）。重试保留任务 ID 并递增尝试 ID（如 `T02-A2`）。每次尝试使用独立的报告和回执路径，避免迟到结果混淆。
+   ```sh
+   rex split -s "$REX_SESSION" -b <主代理block> --split=right --ratio 50 \
+     --focus=false --label "<emoji 任务名>" --json -c <任务目录> \
+     -- <启动命令>
+   ```
 
-按以下顺序派发每个子任务：
+2. 后续子代理：以右半区已有子 pane 为 anchor，向下分割。主代理比例不变。
 
-1. **确定子代理名称**：格式如 `🔎 接口审查 T01-A1`。子代理专属 tab 与代理内部名称保持一致。优先复用已登记且空闲的子代理。
-2. **创建后台 Tab 并启动**：
-   - 新建时，使用 `rex window new -s <完整session ID> "<名称>" --focus=false -c <cwd> -- <启动命令>` 创建后台 tab。
-   - **子代理运行时选择**：
-     - **快速模型（推荐）**：使用 `pi --name "<名称>" --provider deepseek --model deepseek-flash`，思考强度按任务难度选择 `high` 至 `max`。
-     - **Antigravity 后台 Worker**：使用 `agy --dangerously-skip-permissions -i "<首任务提示词>"`。
-   - 保存新建返回的完整 `window_id` 与 `block_id`。
-   - 复用空闲代理时，核对目标 block 与输入状态，更新 tab 与代理名称，再发送任务。
-3. **核对就绪状态**：核实代理已就绪、首任务已送达、tab 名称一致以及实际模型生效。创建超时后先检查已有资源，避免重复派发。
-4. **登记 TODO**：在 `TODO.md` 中记录任务 ID、尝试 ID、名称、完整 session/window/block ID、实际模型、任务状态和报告路径。
+   ```sh
+   rex split -s "$REX_SESSION" -b <右侧子pane block> --split=below \
+     --focus=false --label "<emoji 任务名>" --json -c <任务目录> \
+     -- <启动命令>
+   ```
 
-## 3. 回报与验收
+3. 记录 anchor block、`window_id`、新 `block_ids[0]`、session。用 `rex block inspect <block> --json` 复核 `window_id`。
+4. 用户指定其他布局时优先：新 tab（`rex window new -s "$REX_SESSION" "<名称>" --focus=false -c <任务目录> -- <启动命令>`）、其他 session、左右方向、其他比例都按用户要求。用户未指定时用第 1、2 步。
 
-子代理完成、受阻或失败时，先保存报告并发布原子回执，再尝试主动通知。随后结束当前轮次并等待下一条指令，不自行开始下一项。
+同一 tab 内多个 pane 只是并排终端，不是进程树。报告和回复按 pane、tab 描述，不写成父子进程结构。
 
-**主动通知：**
-在同一 Rex 服务器上，子代理可使用 `rex send <主代理block ID> "子代理回报｜<TaskId>-<AttemptId>｜完成/受阻/失败｜<报告绝对路径>"`，再使用 `rex send-key <主代理block ID> enter` 提交通知。
-- 发送前必须核对目标 block 仍是主代理会话，并确认输入框没有用户内容，也没有权限或密码提示。
-- 无法确认时不发送，保留文件回执。不要向子代理自己的 block 发送回报。
+## 3. 启动与模型
 
-**本机回执与等待：**
-本机文件回执是权威的补收与恢复依据。
-- 主代理有独立工作时继续执行独立工作。
-- 需要等待子代理结果时，使用 `scripts/wait-report.mjs` 等待器：
-  ```bash
-  bun <本技能目录>/scripts/wait-report.mjs --timeout-ms 30000 <回执绝对路径> [<其他回执绝对路径> ...]
+- **快速模型（推荐）**：
+  ```sh
+  pi --name "<emoji 任务名>" --model magpie/auto/deepseek-flash --thinking high "<首任务>"
   ```
-- 通过 `run_command` 执行等待脚本，设置适当的 `WaitMsBeforeAsync`。
-- **严禁使用 sleep 循环或高频轮询截图。**
-- `rex wait` 等待进程退出，不能判断交互式代理单轮交互的完成。普通等待超时不代表失败，不触发重复派发。
+  思考强度按难度取 `high` 至 `max`。
+- **Antigravity 后台 Worker**：
+  ```sh
+  agy --dangerously-skip-permissions -i "<首任务提示词>"
+  ```
+  按需可附加 `--model` 与 `--effort`（`low|medium|high|xhigh|max`）。
+- 首任务随启动作为参数提交，不启动空会话再补发。
+- 启动后核对：名称、实际 provider、model、思考强度、cwd、首任务已送达。
+- 模型或强度不可用时报告用户并等待选择，不静默更换。
+- 创建超时后先查已有资源，避免重复派发。
 
-**独立验收：**
-1. 主代理核对任务 ID、尝试 ID、报告内容与实际代码/产物。
-2. 运行必要的验证命令或测试套件。
-3. **只有验收通过才勾选 TODO。** 子代理自报成功不能代替主代理独立验收。
-4. 验收未通过时，将具体缺口交回原代理修改。
-5. 遇到启动失败、异常退出或权限阻塞，保存状态并报告用户，严禁静默更换模型或启动方式绕过问题。
+## 4. 复用与命名
 
-## 4. 暂停、恢复与结束
+先查本任务有无空闲代理。复用时按顺序：核对目标 block 和输入框 → 更名 → 发任务。
 
-- **暂停**：用户要求暂停或阶段期限到期时，暂停受影响的子代理并更新 `TODO.md` 记录交接。
-- **恢复**：恢复时核对 `TODO.md`、已登记的子代理 block ID、已有报告和工作区状态。状态未知时不重复派发相同写任务。
-- **退出处理**：主代理退出前，按 [主循环约定](references/loop.md) 交代继续运行项或安全暂停子任务。
-- **清理收尾**：全部任务验收通过后，向用户汇报产物路径与验证证据。只清理本次创建且已验收完成的子 tab/block（如使用 `rex window close`）。保留主代理所在终端与用户正在使用的资源。
+- 共享 tab 保留整体任务名，pane 用 `--label`（或 Pi 会话 `/name`）区分具体子任务。
+- 一个 pane 只跑一个任务。任务改变时更新名称。
+- Pi 空闲且输入框可用时，才发送 `/name <名称>`。
+
+## 5. 回报
+
+子代理完成、受阻或失败时：写报告 → 原子写回执 → 主动通知 → 结束本轮等待。
+
+派发任务时要求子代理把完整结果写入报告文件。报告优先用 Markdown，按摘要、证据和待核对事项分节；按任务调整，保留验收所需细节。子代理终端的最终回复只写任务 ID、状态和报告绝对路径，不复述报告正文或表格。必要的进度、错误和权限提示仍可显示。
+
+主代理先读报告摘要，再按验收需要读取证据和实际产物。向用户交付时由主代理整理结果。不得以简短回执代替验收。
+
+主动通知：
+
+```sh
+rex send -s "$REX_SESSION" -b <主代理block> '子代理回报｜T06-A1｜完成｜<报告绝对路径>'
+rex send-key -s "$REX_SESSION" -b <主代理block> enter
+```
+
+发送前核对三项：目标仍是该主代理交互会话；输入框没有用户文字；没有权限或密码提示。任一项无法确认时不发送，保留回执并记录原因。发送成功只证明终端收到输入，不证明主代理已处理。
+
+主代理侧：主动通知优先。文件回执和等待脚本只用于补收与恢复，不常态依赖。等待脚本不唤醒已退出的主代理。单次阻塞等待不超过 60 秒。普通等待超时不代表失败。需要补收或阻塞等待回执时，通过 `run_command` 运行等待器并设置合适的 `WaitMsBeforeAsync`：
+
+```sh
+bun <本技能目录>/scripts/wait-report.mjs --timeout-ms 30000 <回执绝对路径> [<其他回执绝对路径> ...]
+```
+
+**严禁使用 sleep 循环或高频轮询截图。**
+
+## 6. 验收、暂停与收尾
+
+按 [Rex 主循环](rex-main-loop.md) 第 5 至 7 节执行。Rex 补充：只清理本次创建且已验收的 pane（如 `rex block close`）或新 tab（`rex window close`）；保留主代理终端和用户正在使用的资源；不向主代理自己的 block 发送输入。
