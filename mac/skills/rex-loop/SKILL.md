@@ -1,81 +1,48 @@
 ---
 name: rex-loop
-description: 手动运行 Rex 长期任务。默认在主 tab 同屏分屏派发子代理，主代理保留半屏。
+description: 手动运行 Rex 长期任务。入口、准备与 Rex 专用操作在本文件；工作项路由、派发边界、启动核对、回报与通知、验收与恢复以 rex-main-loop.md 为准。
 disable-model-invocation: true
 ---
 
 # Rex 长期任务
 
-仅在用户显式调用时使用。用户可提供任务书或已有任务目录。只要求状态或暂停时，只执行对应动作。
+仅在用户显式调用时使用。用户可提供任务书或已有任务目录。只要求状态或暂停时，只执行对应动作。未给目标时先整理任务，不启动代理。
 
-先读 [Rex 主循环](rex-main-loop.md)。它负责计划、派发边界、验收、恢复与安全边界。本文只写 Rex 操作。需要字段示例时读 [任务记录示例](references/task-state.md)。需要回执细节时读 [Rex 文件回执](references/rex-reports.md)。`references` 是指向共享目录的软链，默认不改；用户明确要求时才改。
+流程权威是 [Rex 主循环](rex-main-loop.md)：工作项路由、派发边界、启动核对、回报与通知格式、安全等待、验收、失败与恢复、完成判定都在那里，可独立阅读。本文件只给入口、准备与 Rex 专用操作，不复制长规则。需要字段示例时读 [任务记录示例](references/task-state.md)，只借用字段；忽略其中的写入角色和文件名。需要回执协议时读 [Rex 文件回执](references/rex-reports.md)。命令、参数与失败码按需查 [Rex 操作细节](operations.md)，其余轮次不读。`references` 是指向共享目录的软链，默认不改；用户明确要求时才改。
+
+本技能只用于 rex-loop 调用，不改变 herdr-loop 或其它技能。`AGENTS.md` 规定项目边界、权限和默认协作方式。遵守适用的上级指令与项目硬规则；用户明确指示优先。
 
 ## 1. 准备
 
-1. 确定“emoji + 任务概要”。读当前 `rex` skill 及其官方正文。用 `rex whoami --json`、`rex block ls`、`rex session inspect` 核对主代理所在 session、window、block 的完整 ID。把主代理专属 tab 和 Pi 会话改成该名称；共享 tab 保留整体任务名。Pi 会话优先用 `rename_current_session`，不可用时请用户执行 `/name <名称>`。Rex session 名称保持不变，除非用户要求。
-2. 按 [Rex 主循环](rex-main-loop.md) 第 1 节建立 `TODO.md`，记下 Rex 字段。
+1. 确定“emoji + 任务概要”。读当前 `rex` skill，并按其指令执行 `rex __internal skill`。运行坐标脚本，核对主代理的 session、window、block 完整 ID 与 tab 布局；命令与诊断见 [操作细节](operations.md) 第 1 节。脚本失败时停止依赖坐标的操作；退出码 4 表示服务器不可达，资源状态未知，不得记为资源已消失。把主代理专属 tab 和 Pi 会话改成该名称，共享 tab 保留整体任务名；Rex session 名称不动，除非用户要求。Pi 会话优先用 `rename_current_session`，不可用时请用户执行 `/name <名称>`。
+2. 任务开始先派 pi-subagents 后台代理担任状态记录员，由其按 [Rex 主循环](rex-main-loop.md) 第 1 节建立 `TODO.md`。记录员是 `TODO.md`、资源登记和检查点的唯一维护者。
 3. 记下主代理 block ID 作为回报地址。主动通知是首选通道，文件回执是备用。远程任务先验证远程通道。
 
-## 2. 同屏分屏派发（默认）
+## 2. Rex 专用操作
 
-默认在主代理所在 tab 内分屏。主代理保留半屏。子代理占用右半区。
+### 2.1 同屏 peer 派发
 
-1. 第一个子代理：以主代理 block 为 anchor，向右分割，`--ratio 50`。
+用于其余执行工作，以及需要同屏核对或独立交互 Pi 的工作。默认每个 tab 最多四个 pane，主代理在左，同屏代理在右。用户指定布局时优先，脚本不自动调整用户自定义布局。
 
-   ```sh
-   rex split -s "$REX_SESSION" -b <主代理block> --split=right --ratio 50 \
-     --focus=false --label "<emoji 任务名>" --json -c <任务目录> \
-     -- pi --name "<emoji 任务名>" --model magpie/auto/deepseek-flash --thinking high "<首任务>"
-   ```
+- 派发调 `rex-dispatch.mjs`。只登记本任务已确认的 pane 与工作 tab，不猜归属，不把未登记 pane 当作代理。满四个 pane 时由主代理决定复用空闲 pane、在已登记且有空位的工作 tab 追加，还是新建 `🐙sub` 工作 tab；它仍属原主任务，代理向原主代理 block 回报。
+- 固定比例、pane 顺序、锚点与满额后的下一步由脚本读实况计算，正文不写，也不手工推算。脚本随技能部署在 `scripts/`；缺件或拒绝时停止同屏派发并报告，不手改布局、不手拼锚点、不改用其它分割方式。
+- 脚本拒绝时不创建。创建已发出而结果不明时保留已创建资源，按返回坐标核对并报告，禁止重试或自动清理；脚本不关闭资源。
+- 参数与失败分类见 [操作细节](operations.md) 第 3 节。首任务的回报要求按 [Rex 主循环](rex-main-loop.md) 第 4 节写。
 
-2. 后续子代理：以右半区已有子 pane 为 anchor，向下分割。主代理比例不变。
+同一 tab 内多个 pane 只是并排终端，不是进程树。报告与回复按 pane、tab 描述。独立目标且预计持续多轮的新主题可新建主任务 tab 与 Pi 会话，交接目标、背景与路径并建立独立状态；短问题留在原 tab。共享工作区时协调写入权。
 
-   ```sh
-   rex split -s "$REX_SESSION" -b <右侧子pane block> --split=below \
-     --focus=false --label "<emoji 任务名>" --json -c <任务目录> \
-     -- pi --name "<emoji 任务名>" --model magpie/auto/deepseek-flash --thinking high "<首任务>"
-   ```
+### 2.2 pi-subagents 后台
 
-3. 记录 anchor block、`window_id`、新 `block_ids[0]`、session。用 `rex block inspect <block> --json` 复核 `window_id`。
-4. 用户指定其他布局时优先：新 tab、其他 session、左右方向、其他比例都按用户要求。用户未指定时用第 1、2 步。
+调用 Pi 工具，不是 shell。文件读取与调研用 `scout`；`TODO.md` 和交付文档写作用 `worker`。在 `task` 中写明报告和回执的绝对路径，要求子代理实际写入；`output` 指定运行时产物落点，任务正文里的路径不改变该路由。只需文件引用时加 `options: { outputMode: "file-only" }`。不为它建 pane。调用写法见 [操作细节](operations.md) 第 2 节；通道、收尾与回执按 [Rex 主循环](rex-main-loop.md) 第 4 节。
 
-同一 tab 内多个 pane 只是并排终端，不是进程树。报告和回复按 pane、tab 描述，不写成父子进程结构。
+## 3. 复用与命名
 
-## 3. 启动与模型
+优先复用本任务的空闲代理或原后台 run。复用空闲资源由主代理判断。后台 run 没有终端，不建 pane，不参与 pane 命名。复用时先核对目标 block 或 run 状态与输入框，再更名，再发任务。
 
-- 子代理默认 `magpie/auto/deepseek-flash`。思考强度按难度取 `high` 至 `max`。
-- 首任务随启动作为位置参数提交，不启动空会话再补发。
-- 启动后核对：名称、实际 provider、model、思考强度、cwd、首任务已送达。
-- 模型或强度不可用时报告用户并等待选择，不静默更换。
-- 创建超时后先查已有资源，避免重复派发。
+- 主任务共享 tab 保留整体任务名。代理工作 tab、代理 pane 标签和 Pi 会话名统一以 `🐙sub` 开头，后接任务或职责；用户指定名称优先。一个 pane 只跑一个任务，任务改变时更新名称。Pi 空闲且输入框可用时，才发送 `/name <名称>`。
+- 后台 run 先查 `status` 再动作，`stop` 之后不能 `resume`；每次 `resume` 后核对返回的 run ID 并登记到 `TODO.md`，下一次复用用最新返回的 ID。语法见 [操作细节](operations.md) 第 4 节。
+- 只有需要新上下文时才新派。先记原因：原 run 不可恢复、已被 stop 不可恢复，或原上下文会污染结论。复用前后都在 `TODO.md` 记录工作项、动作、run ID 与结果。
 
-## 4. 复用与命名
+## 4. 退出与暂停
 
-先查本任务有无空闲代理。复用时按顺序：核对目标 block 和输入框 → 更名 → 发任务。
-
-- 共享 tab 保留整体任务名，pane 用 `--label` 或 `/name` 区分具体子任务。
-- 一个 pane 只跑一个任务。任务改变时更新名称。
-- Pi 空闲且输入框可用时，才发送 `/name <名称>`。
-
-## 5. 回报
-
-子代理完成、受阻或失败时：写报告 → 原子写回执 → 主动通知 → 结束本轮等待。
-
-派发任务时要求子代理把完整结果写入报告文件。报告优先用 Markdown，按摘要、证据和待核对事项分节；按任务调整，保留验收所需细节。子代理终端的最终回复只写任务 ID、状态和报告绝对路径，不复述报告正文或表格。必要的进度、错误和权限提示仍可显示。
-
-主代理先读报告摘要，再按验收需要读取证据和实际产物。向用户交付时由主代理整理结果。不得以简短回执代替验收。
-
-主动通知：
-
-```sh
-rex send -s "$REX_SESSION" -b <主代理block> '子代理回报｜T06-A1｜完成｜<报告绝对路径>'
-rex send-key -s "$REX_SESSION" -b <主代理block> enter
-```
-
-发送前核对三项：目标仍是该 Pi 交互会话；输入框没有用户文字；没有权限或密码提示。任一项无法确认时不发送，保留回执并记录原因。发送成功只证明终端收到输入，不证明主代理已处理。
-
-主代理侧：主动通知优先。文件回执和等待脚本只用于补收与恢复，不常态依赖。等待脚本不唤醒已退出的主代理。单次阻塞等待不超过 60 秒。普通等待超时不代表失败。
-
-## 6. 验收、暂停与收尾
-
-按 [Rex 主循环](rex-main-loop.md) 第 5 至 7 节执行。Rex 补充：只清理本次创建且已验收的 pane；保留主代理终端和用户正在使用的资源；不向主代理自己的 block 发送输入。
+完成判定、检查点、异常状态、验收与安全边界见 [Rex 主循环](rex-main-loop.md) 第 5 至 7 节。用户取消时终止循环并记录原因；暂停或改范围时按 [Rex 主循环](rex-main-loop.md) 第 6 节处理。

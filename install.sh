@@ -74,6 +74,11 @@ for skill_dir in "$DOTFILES"/mac/skills/*/; do
   fi
 done
 
+# Rex 官方基础技能（由 rex skill setup 安装至 ~/.agents/skills/rex）：同步软链供 AGY 发现
+if [ -d "$HOME/.agents/skills/rex" ] && [ -d "$HOME/.gemini/antigravity-cli" ]; then
+  link "$HOME/.agents/skills/rex" "$HOME/.gemini/antigravity-cli/skills/rex"
+fi
+
 # herdr plugins.json：不纳管（插件管理器回写的状态文件，本机自维护）
 
 # omp models.yml：含密钥，真身本机自维护，永不入库（模板已移除 2026-08-21）
