@@ -6,6 +6,31 @@
 开头直述核心结论：做了什么 + 得到什么结果 + 需要用户做什么。后续给数字、说人话、交代边界。
 调研前写明范围、时限与交付物；到时保存产物并结束，扩大范围先报告。
 
+## 任务启动前命名（必做）
+
+- **触发时机**：接到任何实质性任务、准备调用工具执行前，先确定“Emoji + 中文任务概要”（如 `🔍 TOE问卷与fsQCA调研`）；纯寒暄或单句问答可跳过。任务切换时同步更新三处名称。
+- **1. 重命名当前 AGY 对话**：环境变量 `$ANTIGRAVITY_LS_ADDRESS`、`$ANTIGRAVITY_CSRF_TOKEN`、`$ANTIGRAVITY_CONVERSATION_ID` 存在时直接调用（缺失或不可达时提示用户手动 `/rename <Emoji> <任务中文名>`）：
+  ```bash
+  curl -sS -X POST "http://$ANTIGRAVITY_LS_ADDRESS/product.v1.ConversationService/UpdateConversation" \
+    -H "Content-Type: application/json" \
+    -H "Connect-Protocol-Version: 1" \
+    -H "x-antigravity-csrf-token: $ANTIGRAVITY_CSRF_TOKEN" \
+    -d '{"conversationId":"'"$ANTIGRAVITY_CONVERSATION_ID"'","annotations":{"title":"<Emoji> <任务中文名>"}}'
+  ```
+- **2. 重命名 Rex Tab（若 `$REX_SESSION` 存在）**：先查 `window_id` 再改名（共享 Tab 保留主任务名，Rex session 名默认不改）：
+  ```bash
+  rex whoami --json
+  rex window rename -s "$REX_SESSION" <window_id> "<Emoji> <任务中文名>"
+  ```
+- **3. 重命名 Herdr-app Tab（若 `$HC_TERMINAL_ID` 存在）**：先用 `herdr-app ls` 核对当前终端所属 `<tab_id>` 再精准改名并同步终端标签（共享 Tab 保留主任务名，不为命名新建 Tab）：
+  ```bash
+  herdr-app ls
+  herdr-app do tab.rename --id "<tab_id>" --name "<Emoji> <任务中文名>"
+  hc label "$HC_TERMINAL_ID" "where=<Emoji> <任务中文名>"
+  # 仅改当前激活 Tab 时也可省略 --id：
+  herdr-app do tab.rename --name "<Emoji> <任务中文名>"
+  ```
+
 ## 工具与搜索纪律
 
 - 搜索代码与文件，优先在终端执行 `rg`、`fd` 或 `find`。
@@ -23,6 +48,7 @@
 ## 外部访问与技能管理
 
 - 访问 GitHub 优先调用 `/opt/homebrew/bin/gh`，Token 由 KeePassXC 的 `apienv` 注入，不写入磁盘。
+- 调用 Gemini API（多模态解析、生图、独立脚本）优先使用 `/Users/panyu/.local/bin/gemini-api`（有项目 `.bin/gemini-api` 包装器时走包装器）；密钥由 KeePassXC 的 `apienv`（默认 `geminiapi 付费层`）运行时注入，不写入磁盘。
 - agy 全局技能真源在 dotfiles 的 `mac/skills/`，通过 `install.sh` 分发。严禁运行 `npx skills add`。
 
 ## 终端底座协作（Rex 与 Herdr）
@@ -30,7 +56,6 @@
 - **先确认终端环境**：执行终端操作、分屏或命名前，先检查环境变量 `$REX_SESSION`（Rex 环境）与 `$HC_TERMINAL_ID`（Herdr 环境）。
 - **Rex 环境协作与调动 Pi**：用 `rex whoami --json`、`rex block ls -s "$REX_SESSION" --json`、`rex session inspect "$REX_SESSION" --json` 核对完整 `session_id`、`window_id` 与 `block_id`。用 `rex split` 或 `rex window new` 调动交互式 `pi`（`-- pi --name "🐙sub｜<职责>" --model magpie/auto/deepseek-flash --thinking high "<首任务>"`）或 `agy`。用 `rex capture` 检查终端输出与输入框状态，用 `rex send` 加 `rex send-key enter` 发送指令或回报。
 - **Herdr 环境协作**：后台进程与 agent 编排使用 `hc`（如 `hc ls`、`hc run`、`hc send`）；窗口、工作区、标签页与分屏使用 `herdr-app do ...`。严禁直接执行不带子命令的裸 `herdr` 或裸 `herdr-app`。
-- **Session 与 Tab 命名**：执行任何任务前，必须显式为当前会话（`/rename <中文名>`）与所在终端的专属 Tab 命名（中文 + Emoji 前缀，共享 Tab 保留主任务名）。在 Rex 中执行 `rex window rename -s "$REX_SESSION" <window_id> "🔍 任务中文名"`；在 Herdr 中执行 `herdr-app do tab.rename --name "🔍 任务中文名"`。
 
 ## 本机规则（macOS 硬红线）
 
